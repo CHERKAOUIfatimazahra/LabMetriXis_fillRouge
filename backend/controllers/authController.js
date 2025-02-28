@@ -108,7 +108,6 @@ exports.login = async (req, res) => {
 
     // Create user object with necessary data
     const userData = {
-      id: user._id,
       name: user.name,
       email: user.email,
       role: user.role,
