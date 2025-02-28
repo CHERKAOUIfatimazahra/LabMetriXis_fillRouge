@@ -8,6 +8,8 @@ import OTP from "./pages/auth/OTP";
 
 // dashboard researcher
 import ResearcherDashboard from "./pages/dashboard/researcher/ResearcherDashboard";
+import ProjectCreatePage from "./pages/dashboard/researcher/createProject/ProjectCreatePage";
+import AddSample from "./pages/dashboard/researcher/createProject/AddSample";
 
 import HomePage from "./pages/HomePage";
 
@@ -29,6 +31,14 @@ function App() {
 
         {/* researcher dashboard */}
         <Route path="/dashboard/researcher" element={<ResearcherDashboard />} />
+        <Route
+          path="/dashboard/researcher/projects/create"
+          element={<ProjectCreatePage />}
+        />
+        <Route
+          path="/dashboard/researcher/projects/create/add-sample/:projectId"
+          element={<AddSample />}
+        />
 
         {/* technicien dashboard */}
 
