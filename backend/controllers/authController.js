@@ -83,47 +83,71 @@ exports.verifyEmail = async (req, res) => {
 exports.login = async (req, res) => {
   const { email, password } = req.body;
 
-  const user = await User.findOne({ email });
-  if (!user) return res.status(404).json({ message: "User not found" });
+  try {
+    const user = await User.findOne({ email });
+    if (!user)
+      return res.status(404).json({ message: "Utilisateur non trouvé" });
 
-  const isMatch = await bcrypt.compare(password, user.password);
-  if (!isMatch) return res.status(401).json({ message: "Invalid credentials" });
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch)
+      return res.status(401).json({ message: "Identifiants invalides" });
 
-  if (!user.isVerified) {
-    return res
-      .status(403)
-      .json({ message: "Please verify your email before logging in." });
-  }
+    if (!user.isVerified) {
+      return res.status(403).json({
+        message: "Veuillez vérifier votre email avant de vous connecter.",
+      });
+    }
 
-  // Logic for OTP sending only if required
-  if (!user.otp || user.otpExpires < Date.now()) {
-    const lastOTPSentAt = user.lastOTPSentAt;
-    const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-    if (lastOTPSentAt && lastOTPSentAt > oneWeekAgo) {
+    // Validate user role
+    const validRoles = ["admin", "chercheur", "technicien"];
+    if (!validRoles.includes(user.role)) {
+      return res
+        .status(400)
+        .json({ message: "Rôle d'utilisateur non reconnu" });
+    }
+
+    // Create user object with necessary data
+    const userData = {
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      institution: user.institution,
+      specialty: user.specialty,
+    };
+
+    // Logic for OTP sending only if required
+    if (!user.otp || user.otpExpires < Date.now()) {
+      const lastOTPSentAt = user.lastOTPSentAt;
+      const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+      if (lastOTPSentAt && lastOTPSentAt > oneWeekAgo) {
+        const token = jwt.sign(
+          { id: user._id, role: user.role },
+          process.env.JWT_SECRET,
+          { expiresIn: "1h" }
+        );
+        return res.json({ token, user: userData });
+      } else {
+        // Generate a new OTP and send it to the user
+        const otp = generateOTP();
+        user.otp = otp;
+        user.otpExpires = Date.now() + 3 * 60 * 1000;
+        user.lastOTPSentAt = Date.now();
+        await user.save();
+
+        sendEmail(user.email, "Your OTP", `Your OTP is ${otp}`);
+        return res.json({ message: "OTP sent to email" });
+      }
+    } else {
       const token = jwt.sign(
         { id: user._id, role: user.role },
         process.env.JWT_SECRET,
         { expiresIn: "1h" }
       );
-      res.json({ token });
-    } else {
-      // Generate a new OTP and send it to the user
-      const otp = generateOTP();
-      user.otp = otp;
-      user.otpExpires = Date.now() + 3 * 60 * 1000;
-      user.lastOTPSentAt = Date.now();
-      await user.save();
-
-      sendEmail(user.email, "Your OTP", `Your OTP is ${otp}`);
-      res.json({ message: "OTP sent to email" });
+      return res.json({ token, user: userData });
     }
-  } else {
-    const token = jwt.sign(
-      { id: user._id, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: "1h" }
-    );
-    res.json({ token });
+  } catch (error) {
+    console.error("Login error:", error);
+    return res.status(500).json({ message: "Erreur interne du serveur" });
   }
 };
 
@@ -134,27 +158,57 @@ exports.verifyOTP = async (req, res) => {
   try {
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: "Utilisateur non trouvé" });
     }
 
     // Vérifiez si l'OTP est valide et s'il n'a pas expiré
-    if (user.otp === otp && user.otpExpires > Date.now()) {
-      user.otp = undefined;
-      user.otpExpires = undefined;
-      await user.save();
-
-      const token = jwt.sign(
-        { id: user._id, role: user.role },
-        process.env.JWT_SECRET,
-        { expiresIn: "1h" }
-      );
-
-      res.json({ message: "OTP verified successfully", token });
-    } else {
-      res.status(400).json({ message: "Invalid or expired OTP" });
+    if (!user.otp || !user.otpExpires) {
+      return res
+        .status(400)
+        .json({ message: "Aucun OTP en attente de vérification" });
     }
+
+    if (user.otpExpires < Date.now()) {
+      return res
+        .status(400)
+        .json({ message: "OTP expiré. Veuillez en demander un nouveau" });
+    }
+
+    if (user.otp !== otp) {
+      return res.status(400).json({ message: "Code OTP invalide" });
+    }
+
+    // OTP valide - nettoyer les champs OTP
+    user.otp = undefined;
+    user.otpExpires = undefined;
+    await user.save();
+
+    // Créer le token et renvoyer les données utilisateur
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+
+    const userData = {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      institution: user.institution,
+      specialty: user.specialty,
+    };
+
+    return res.json({
+      message: "OTP vérifié avec succès",
+      token,
+      user: userData,
+    });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("OTP verification error:", error);
+    return res
+      .status(500)
+      .json({ message: "Erreur lors de la vérification de l'OTP" });
   }
 };
 
@@ -162,22 +216,39 @@ exports.verifyOTP = async (req, res) => {
 exports.resendOTP = async (req, res) => {
   const { email } = req.body;
 
-  const user = await User.findOne({ email });
-  if (!user) {
-    return res.status(404).json({ message: "User not found" });
-  }
+  try {
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "Utilisateur non trouvé" });
+    }
 
-  if (!user.otp || user.otpExpires < Date.now()) {
+    // Vérifier si un OTP récent existe déjà
+    if (user.otp && user.otpExpires && user.otpExpires > Date.now()) {
+      return res.status(400).json({
+        message:
+          "Un OTP valide existe déjà. Veuillez attendre avant d'en demander un nouveau",
+      });
+    }
+
+    // Générer et sauvegarder un nouveau OTP
     const otp = generateOTP();
     user.otp = otp;
-    user.otpExpires = Date.now() + 3 * 60 * 1000; // 10 minutes
+    user.otpExpires = Date.now() + 3 * 60 * 1000; // 3 minutes
     await user.save();
 
-    sendEmail(user.email, "Your OTP", `Your OTP is ${otp}`);
+    // Envoyer l'email avec l'OTP
+    await sendEmail(
+      user.email,
+      "Votre nouveau code OTP",
+      `Votre nouveau code OTP est : ${otp}. Il expirera dans 3 minutes.`
+    );
 
-    res.json({ message: "OTP sent to email" });
-  } else {
-    res.status(400).json({ message: "OTP already sent" });
+    return res.json({ message: "Nouveau code OTP envoyé avec succès" });
+  } catch (error) {
+    console.error("Resend OTP error:", error);
+    return res
+      .status(500)
+      .json({ message: "Erreur lors de l'envoi du nouveau OTP" });
   }
 };
 
