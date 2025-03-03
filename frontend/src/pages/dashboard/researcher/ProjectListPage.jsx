@@ -67,36 +67,17 @@ function ProjectListPage() {
     },
   ];
 
-  useEffect(() => {
-    fetchProjects();
-  }, []);
-
-  const fetchProjects = async () => {
-    try {
-      const response = await axios.get(
-        `${import.meta.env.VITE_API_URL}/project/projects`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        }
-      );
-
-      setProjects(response.data.projects);
-     
-    } catch (error) {
-      toast.error("Failed to fetch projects");
-      console.error("Error fetching projects:", error);
-    } finally {
-      setIsLoading(false);
-    }
+  // Add the missing handleStatusFilter function
+  const handleStatusFilter = (e) => {
+    setFilterStatus(e.target.value);
   };
 
-
+  // Function to handle page change
   const handlePageChange = (newPage) => {
     setPagination((prev) => ({ ...prev, currentPage: newPage }));
   };
 
+  // Functions for status and progress colors
   const getStatusColor = (status) => {
     switch (status) {
       case "Completed":
@@ -105,6 +86,10 @@ function ProjectListPage() {
         return "bg-blue-100 text-blue-800";
       case "Planning":
         return "bg-yellow-100 text-yellow-800";
+      case "On Hold":
+        return "bg-orange-100 text-orange-800";
+      case "Cancelled":
+        return "bg-red-100 text-red-800";
       default:
         return "bg-gray-100 text-gray-800";
     }
@@ -115,6 +100,80 @@ function ProjectListPage() {
     if (progress >= 40) return "bg-blue-500";
     return "bg-yellow-500";
   };
+
+  // Function for search
+  const handleSearch = (e) => {
+    setSearchTerm(e.target.value);
+  };
+
+  // Fetch projects
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        // Correct URL format for Vite
+        const response = await axios.get(
+          `${import.meta.env.VITE_API_URL}/project/projects`,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }
+        );
+
+        console.log(response.data);
+
+        // Verify response contains array of projects
+        if (Array.isArray(response.data)) {
+          setProjects(response.data);
+        } else if (response.data.projects) {
+          setProjects(response.data.projects);
+        } else {
+          console.error("Unexpected response format:", response.data);
+          setProjects([]);
+        }
+      } catch (error) {
+        console.error("Error fetching projects:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProjects();
+  }, []);
+
+  // Fetch statistics - moved up before any conditional returns
+  useEffect(() => {
+    const fetchStatistics = async () => {
+      try {
+        const response = await axios.get(
+          `${import.meta.env.VITE_API_URL}/statistic/statistic`,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }
+        );
+        setStatistics(response.data);
+      } catch (error) {
+        console.error("Error fetching statistics:", error);
+      }
+    };
+
+    fetchStatistics();
+  }, []);
+
+  // Filter projects based on search term and status
+  const filteredProjects = projects.filter((project) => {
+    const matchesSearch =
+      (project.projectName &&
+        project.projectName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (project.description &&
+        project.description.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchesStatus =
+      filterStatus === "All" || project.status === filterStatus;
+
+    return matchesSearch && matchesStatus;
+  });
 
   if (isLoading) {
     return (
@@ -265,8 +324,8 @@ function ProjectListPage() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {projects.length > 0 ? (
-                      projects.map((project) => (
+                    {filteredProjects.length > 0 ? (
+                      filteredProjects.map((project) => (
                         <tr
                           key={project._id}
                           className="hover:bg-gray-50 transition-colors duration-150"
@@ -284,7 +343,8 @@ function ProjectListPage() {
                                   {project.description}
                                 </div>
                                 <div className="text-xs text-teal-600 mt-1">
-                                  Budget: ${project.budget.toLocaleString()}
+                                  Budget: $
+                                  {project.budget?.toLocaleString() || "N/A"}
                                 </div>
                               </div>
                             </div>
@@ -296,7 +356,7 @@ function ProjectListPage() {
                                   project.status
                                 )}`}
                               >
-                                {project.status}
+                                {project.status || "N/A"}
                               </span>
                             </div>
                           </td>
@@ -305,14 +365,16 @@ function ProjectListPage() {
                               <div className="flex-shrink-0 h-8 w-8 bg-teal-200 text-teal-600 rounded-full flex items-center justify-center">
                                 <span className="text-xs font-medium">
                                   {project.teamLeadName
-                                    .split(" ")
-                                    .map((name) => name[0])
-                                    .join("")}
+                                    ? project.teamLeadName
+                                        .split(" ")
+                                        .map((name) => name[0])
+                                        .join("")
+                                    : "TL"}
                                 </span>
                               </div>
                               <div className="ml-3">
                                 <div className="text-sm font-medium text-gray-900">
-                                  {project.teamLeadName}
+                                  {project.teamLead?.name || "Unassigned"}
                                 </div>
                               </div>
                             </div>
@@ -322,17 +384,21 @@ function ProjectListPage() {
                               <div className="flex items-center text-xs text-gray-700">
                                 <span className="font-medium">Start:</span>
                                 <span className="ml-2">
-                                  {new Date(
-                                    project.startDate
-                                  ).toLocaleDateString()}
+                                  {project.startDate
+                                    ? new Date(
+                                        project.startDate
+                                      ).toLocaleDateString()
+                                    : "N/A"}
                                 </span>
                               </div>
                               <div className="flex items-center text-xs text-gray-700 mt-1">
                                 <span className="font-medium">End:</span>
                                 <span className="ml-2">
-                                  {new Date(
-                                    project.deadline
-                                  ).toLocaleDateString()}
+                                  {project.deadline
+                                    ? new Date(
+                                        project.deadline
+                                      ).toLocaleDateString()
+                                    : "N/A"}
                                 </span>
                               </div>
                             </div>
@@ -341,15 +407,15 @@ function ProjectListPage() {
                             <div className="w-full">
                               <div className="flex justify-between mb-1">
                                 <span className="text-xs font-medium text-gray-700">
-                                  {project.progress}%
+                                  {project.progress || 0}%
                                 </span>
                               </div>
                               <div className="w-full bg-gray-200 rounded-full h-2">
                                 <div
                                   className={`h-2 rounded-full ${getProgressColor(
-                                    project.progress
+                                    project.progress || 0
                                   )}`}
-                                  style={{ width: `${project.progress}%` }}
+                                  style={{ width: `${project.progress || 0}%` }}
                                 ></div>
                               </div>
                             </div>
@@ -406,9 +472,15 @@ function ProjectListPage() {
                   </span>{" "}
                   to{" "}
                   <span className="font-medium">
-                    {Math.min(pagination.currentPage * 10, pagination.total)}
+                    {Math.min(
+                      pagination.currentPage * 10,
+                      pagination.total || filteredProjects.length
+                    )}
                   </span>{" "}
-                  of <span className="font-medium">{pagination.total}</span>{" "}
+                  of{" "}
+                  <span className="font-medium">
+                    {pagination.total || filteredProjects.length}
+                  </span>{" "}
                   projects
                 </div>
                 <div className="flex space-x-2">
