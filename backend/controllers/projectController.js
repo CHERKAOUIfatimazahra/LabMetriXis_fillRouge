@@ -68,7 +68,6 @@ exports.addSampleToProject = async (req, res) => {
   try {
     const { projectId } = req.params;
 
-    // Parse the sampleData if it exists as a string
     let sampleData = req.body;
     if (req.body.sampleData) {
       sampleData = JSON.parse(req.body.sampleData);
@@ -91,7 +90,6 @@ exports.addSampleToProject = async (req, res) => {
       createdBy: req.user._id,
     });
 
-    // Handle protocol file if it exists
     if (req.file) {
       sample.protocolFile = {
         fileName: req.file.originalname,
@@ -102,7 +100,7 @@ exports.addSampleToProject = async (req, res) => {
 
     await sample.save();
 
-    // Add sample reference to project
+    // Add sample to project
     await Project.findByIdAndUpdate(projectId, {
       $push: { samples: sample._id },
     });
@@ -131,25 +129,29 @@ exports.getSamplesByProject = async (req, res) => {
 
 exports.getAllProjects = async (req, res) => {
   try {
-    // Check if user is authenticated
-    if (!req.user || !req.user.id) {
-      return res.status(401).json({ error: "Unauthorized access" });
-    }
+    // console.log("User ID:", req.user.id);
 
-    // Find projects where the authenticated user is either the creator or the team leader
+    // Récupérer les projets de l'utilisateur
     const projects = await Project.find({
       $or: [
-        { createdBy: req.user.id }, // User created the project
-        { teamLead: req.user.id }, // User is the team lead
+        { createdBy: req.user.id },
+        { teamLead: req.user.id },
+        { "teamMembers.user": req.user.id },
       ],
-    }).populate("samples");
+    })
+      .populate("samples")
+      .populate("teamLead", "name email")
+      .lean();
 
-    // Calculate progress for each project based on analyzed samples
+    // console.log("Projects found:", projects.length);
+
+    // Calcul de la progression des projets
     const projectsWithProgress = projects.map((project) => {
-      const totalSamples = project.samples.length;
-      const analyzedSamples = project.samples.filter(
-        (sample) => sample.status === "Analyzed"
-      ).length;
+      const totalSamples = project.samples ? project.samples.length : 0;
+      const analyzedSamples = project.samples
+        ? project.samples.filter((sample) => sample.status === "Analyzed")
+            .length
+        : 0;
 
       const progress =
         totalSamples === 0
@@ -157,14 +159,16 @@ exports.getAllProjects = async (req, res) => {
           : Math.round((analyzedSamples / totalSamples) * 100);
 
       return {
-        ...project.toObject(),
-        progress: progress,
+        ...project,
+        progress,
       };
     });
 
     res.json(projectsWithProgress);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("Erreur détaillée:", error.message, error.stack);
+    res
+      .status(500)
+      .json({ error: "Erreur serveur lors de la récupération des projets" });
   }
 };
-
