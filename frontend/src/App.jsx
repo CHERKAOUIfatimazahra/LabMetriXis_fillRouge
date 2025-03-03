@@ -19,6 +19,8 @@ import ResearcherDashboard from "./pages/dashboard/researcher/ResearcherDashboar
 import ProjectCreatePage from "./pages/dashboard/researcher/createProject/ProjectCreatePage";
 import AddSample from "./pages/dashboard/researcher/createProject/AddSample";
 import ProjectListPage from "./pages/dashboard/researcher/ProjectListPage";
+import ProjectDetailPage from "./pages/dashboard/researcher/ProjectDetailPage";
+import ProjectEditPage from "./pages/dashboard/researcher/ProjectEditPage";
 
 // dashboard technicien
 import TechnicianDashboard from "./pages/dashboard/technicien/TechnicianDashboard";
@@ -76,7 +78,7 @@ function App() {
     <Router>
       <Routes>
         {/* Routes publiques */}
-        <Route path="/home" element={<HomePage />} />
+        <Route path="/" element={<HomePage />} />
 
         {/* Routes d'authentification */}
         <Route path="/login" element={<Login />} />
@@ -121,6 +123,25 @@ function App() {
           element={
             <PrivateRoute allowedRoles={["chercheur", "admin"]}>
               <ProjectListPage />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/dashboard/researcher/projects/:projectId"
+          element={
+            <PrivateRoute allowedRoles={["chercheur", "admin"]}>
+              <ProjectDetailPage />
+            </PrivateRoute>
+          }
+        />
+
+        {/* édite */}
+        <Route
+          path="/dashboard/researcher/projects/:projectId/edit"
+          element={
+            <PrivateRoute allowedRoles={["chercheur", "admin"]}>
+              <ProjectEditPage />
             </PrivateRoute>
           }
         />
