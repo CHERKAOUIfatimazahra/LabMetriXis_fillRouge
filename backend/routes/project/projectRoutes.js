@@ -5,7 +5,6 @@ const { isChercheur } = require("../../middleware/roleMiddleware");
 const projectController = require("../../controllers/projectController");
 const userController = require("../../controllers/userController");
 
-
 const multer = require("multer");
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -54,5 +53,34 @@ router.get(
 );
 
 // Get all projects
+router.get(
+  "/projects",
+  verifyToken,
+  isChercheur,
+  projectController.getAllProjects
+);
+
+// get project by id
+router.get(
+  "/projects/:projectId",
+  verifyToken,
+  projectController.getProjectById
+);
+
+// delete sample
+router.delete(
+  "/projects/:projectId/samples/:sampleId",
+  verifyToken,
+  isChercheur,
+  projectController.deleteSample
+);
+
+// deleteProjectByRole
+router.delete(
+  "/projects/:projectId",
+  verifyToken,
+  isChercheur,
+  projectController.deleteProjectByRole
+);
 
 module.exports = router;

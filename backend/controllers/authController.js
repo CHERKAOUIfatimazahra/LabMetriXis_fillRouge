@@ -178,7 +178,7 @@ exports.verifyOTP = async (req, res) => {
       return res.status(400).json({ message: "Code OTP invalide" });
     }
 
-    // OTP valide - nettoyer les champs OTP
+    // OTP valide + nettoyer les champs OTP
     user.otp = undefined;
     user.otpExpires = undefined;
     await user.save();
@@ -212,12 +212,13 @@ exports.verifyOTP = async (req, res) => {
   }
 };
 
-// Route pour le renvoi d'un OTP
+// Renvoi d'un OTP
 exports.resendOTP = async (req, res) => {
   const { email } = req.body;
 
   try {
     const user = await User.findOne({ email });
+
     if (!user) {
       return res.status(404).json({ message: "Utilisateur non trouvé" });
     }
