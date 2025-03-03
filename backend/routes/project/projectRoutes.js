@@ -60,4 +60,27 @@ router.get(
   projectController.getAllProjects
 );
 
+// get project by id
+router.get(
+  "/projects/:projectId",
+  verifyToken,
+  projectController.getProjectById
+);
+
+// delete sample
+router.delete(
+  "/projects/:projectId/samples/:sampleId",
+  verifyToken,
+  isChercheur,
+  projectController.deleteSample
+);
+
+// deleteProjectByRole
+router.delete(
+  "/projects/:projectId",
+  verifyToken,
+  isChercheur,
+  projectController.deleteProjectByRole
+);
+
 module.exports = router;
