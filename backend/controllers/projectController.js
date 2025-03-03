@@ -1,5 +1,6 @@
 const Project = require("../models/Project");
 const Sample = require("../models/Sample");
+const User = require("../models/User");
 
 // Project Management Controllers
 exports.createProject = async (req, res) => {
@@ -170,5 +171,92 @@ exports.getAllProjects = async (req, res) => {
     res
       .status(500)
       .json({ error: "Erreur serveur lors de la récupération des projets" });
+  }
+};
+
+exports.getProjectById = async (req, res) => {
+  try {
+    const id = req.params.projectId;
+    const project = await Project.findById(id)
+      .populate("samples")
+      .populate("teamLead", "name email")
+      .populate("teamMembers.user", "name email")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    if (!project) {
+      return res.status(404).json({ error: "Projet non trouvé" });
+    }
+
+    // Calcul de la progression des projets
+    const totalSamples = project.samples ? project.samples.length : 0;
+    const analyzedSamples = project.samples
+      ? project.samples.filter((sample) => sample.status === "Analyzed").length
+      : 0;
+
+    const progress =
+      totalSamples === 0
+        ? 0
+        : Math.round((analyzedSamples / totalSamples) * 100);
+
+    res.json({
+      project,
+      progress,
+    });
+  } catch (error) {
+    console.error("Error fetching project:", error);
+    res.status(500).json({ error: "Failed to fetch project details" });
+  }
+};
+
+// delete sample
+exports.deleteSample = async (req, res) => {
+  try {
+    const id = req.params.sampleId;
+    const sample = await Sample.findByIdAndDelete(id);
+    if (!sample) {
+      return res.status(404).json({ error: "Sample not found" });
+    }
+    const project = await Project.findById(sample.projectId);
+    if (!project) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+// Update project samples count
+    project.samples = project.samples.filter((s) => s._id.toString() !== id);
+    await project.save();
+    res.json({ message: "Sample deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting sample:", error);
+    res.status(500).json({ error: "Failed to delete sample" });
+  }
+};
+
+// delete project by role createBy
+
+exports.deleteProjectByRole = async (req, res) => {
+  try {
+    const id = req.params.projectId;
+    const project = await Project.findById(id);
+    if (!project) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+
+    // Vérifier si l'utilisateur est le créateur du projet
+    if (project.createdBy.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
+    // Supprimer le projet
+    await Project.findByIdAndDelete(id);
+
+    // Mettre à jour le compte des projets de l'utilisateur
+    const user = await User.findById(req.user._id);
+    user.projects = user.projects.filter((p) => p._id.toString() !== id);
+    await user.save();
+
+    res.json({ message: "Project deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting project:", error);
+    res.status(500).json({ error: "Failed to delete project" });
   }
 };
