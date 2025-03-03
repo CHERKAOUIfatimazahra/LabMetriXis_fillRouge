@@ -3,6 +3,8 @@ const connectDB = require("./config/db");
 const dotenv = require("dotenv");
 const authRoutes = require("./routes/auth/authRoutes");
 const projectRoutes = require("./routes/project/projectRoutes");
+const statisticsRoutes = require("./routes/project/statisticsRoutes");
+
 const cors = require("cors");
 
 const app = express();
@@ -23,6 +25,7 @@ app.use(express.json());
 // Routes
 app.use("/auth", authRoutes);
 app.use("/project", projectRoutes);
+app.use("/statistic", statisticsRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

@@ -114,7 +114,7 @@ function ProjectCreatePage() {
 
       const finalFormData = {
         ...formData,
-        teamLead: formData.teamLead, // This should be a user ID
+        teamLead: formData.teamLead,
         teamMembers: formattedTeamMembers,
       };
 
