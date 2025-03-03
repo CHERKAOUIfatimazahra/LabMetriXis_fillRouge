@@ -5,7 +5,6 @@ const { isChercheur } = require("../../middleware/roleMiddleware");
 const projectController = require("../../controllers/projectController");
 const userController = require("../../controllers/userController");
 
-
 const multer = require("multer");
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -54,5 +53,11 @@ router.get(
 );
 
 // Get all projects
+router.get(
+  "/projects",
+  verifyToken,
+  isChercheur,
+  projectController.getAllProjects
+);
 
 module.exports = router;
