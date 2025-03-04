@@ -16,6 +16,8 @@ import {
   FaBuilding,
   FaCheckCircle,
   FaExclamationTriangle,
+  FaPlus,
+  FaTrash,
 } from "react-icons/fa";
 import Header from "../../../components/dashboard/Header";
 import Sidebar from "../../../components/dashboard/Sidebar";
@@ -28,6 +30,7 @@ function ProjectDetailPage() {
   const [project, setProject] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
 
   // Navigation items config (même que dans ProjectListPage)
   const navItems = [
@@ -102,6 +105,98 @@ function ProjectDetailPage() {
     return "bg-yellow-500";
   };
 
+  // Modifier les fonctions d'ajout et de suppression
+  const addTeamMember = async () => {
+    try {
+      const response = await axios.post(
+        `${
+          import.meta.env.VITE_API_URL
+        }/project/projects/${projectId}/team-members`,
+        {
+          name: "",
+          role: "",
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+
+      setProject(response.data.project);
+      toast.success("Membre ajouté avec succès");
+    } catch (error) {
+      console.error("Error adding team member:", error);
+      toast.error("Erreur lors de l'ajout du membre");
+    }
+  };
+
+  const removeTeamMember = async (memberId) => {
+    try {
+      const response = await axios.delete(
+        `${
+          import.meta.env.VITE_API_URL
+        }/project/projects/${projectId}/team-members/${memberId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+
+      setProject(response.data.project);
+      toast.success("Membre supprimé avec succès");
+    } catch (error) {
+      console.error("Error removing team member:", error);
+      toast.error("Erreur lors de la suppression du membre");
+    }
+  };
+
+  const addSample = async () => {
+    try {
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_URL}/project/projects/${projectId}/samples`,
+        {
+          name: "",
+          identification: "",
+          type: "",
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+
+      setProject(response.data.project);
+      toast.success("Échantillon ajouté avec succès");
+    } catch (error) {
+      console.error("Error adding sample:", error);
+      toast.error("Erreur lors de l'ajout de l'échantillon");
+    }
+  };
+
+  const removeSample = async (sampleId) => {
+    try {
+      const response = await axios.delete(
+        `${
+          import.meta.env.VITE_API_URL
+        }/project/projects/${projectId}/samples/${sampleId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+
+      setProject(response.data.project);
+      toast.success("Échantillon supprimé avec succès");
+    } catch (error) {
+      console.error("Error removing sample:", error);
+      toast.error("Erreur lors de la suppression de l'échantillon");
+    }
+  };
+
   // Fetch project details
   useEffect(() => {
     const fetchProjectDetails = async () => {
@@ -137,40 +232,6 @@ function ProjectDetailPage() {
           <p className="mt-4 text-teal-800 font-medium">
             Chargement des détails du projet...
           </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <FaExclamationTriangle className="mx-auto text-red-500 text-5xl" />
-          <p className="mt-4 text-red-600 font-medium">{error}</p>
-          <button
-            onClick={() => navigate("/dashboard/researcher/projects")}
-            className="mt-4 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
-          >
-            Retour à la liste des projets
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (!project) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <FaExclamationTriangle className="mx-auto text-yellow-500 text-5xl" />
-          <p className="mt-4 text-gray-700 font-medium">Projet non trouvé</p>
-          <button
-            onClick={() => navigate("/dashboard/researcher/projects")}
-            className="mt-4 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
-          >
-            Retour à la liste des projets
-          </button>
         </div>
       </div>
     );
@@ -240,7 +301,7 @@ function ProjectDetailPage() {
                     <button
                       onClick={() =>
                         navigate(
-                          `/dashboard/researcher/projects/${project._id}/create-report`
+                          `/dashboard/researcher/projects/${projectId}/create-publication`
                         )
                       }
                       className="flex items-center px-4 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition-colors shadow-md"
@@ -259,7 +320,7 @@ function ProjectDetailPage() {
                   <button
                     onClick={() =>
                       navigate(
-                        `/dashboard/researcher/projects/${project._id}/edit`
+                        `/dashboard/researcher/projects/${projectId}/edit`
                       )
                     }
                     className="flex items-center px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors shadow-md"
@@ -377,9 +438,18 @@ function ProjectDetailPage() {
             {/* Équipe et échantillons */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
               <div className="bg-white rounded-lg shadow-lg border border-gray-100 p-6">
-                <h2 className="text-xl font-bold text-teal-800 mb-4 border-b pb-2">
-                  Équipe de recherche
-                </h2>
+                <div className="flex justify-between items-center mb-4 border-b pb-2">
+                  <h2 className="text-xl font-bold text-teal-800">
+                    Équipe de recherche
+                  </h2>
+                  <button
+                    onClick={addTeamMember}
+                    className="text-teal-600 hover:bg-teal-50 p-2 rounded-full"
+                    title="Ajouter un membre"
+                  >
+                    <FaPlus />
+                  </button>
+                </div>
 
                 {project.teamLead && (
                   <div className="mb-6">
@@ -415,23 +485,35 @@ function ProjectDetailPage() {
                 {project.teamMembers && project.teamMembers.length > 0 ? (
                   <ul className="space-y-2">
                     {project.teamMembers.map((member, index) => (
-                      <li key={index} className="flex items-center">
-                        <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-xs font-semibold">
-                          {member.user?.name
-                            ? member.user.name
-                                .split(" ")
-                                .map((n) => n[0])
-                                .join("")
-                            : "M"}
-                        </div>
-                        <div className="ml-3">
-                          <div className="text-sm font-medium">
-                            {member.user?.name || "Membre d'équipe"}
+                      <li
+                        key={index}
+                        className="flex items-center justify-between"
+                      >
+                        <div className="flex items-center">
+                          <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-xs font-semibold">
+                            {member.user?.name
+                              ? member.user.name
+                                  .split(" ")
+                                  .map((n) => n[0])
+                                  .join("")
+                              : "M"}
                           </div>
-                          <div className="text-xs text-gray-500">
-                            {member.role || "Rôle non spécifié"}
+                          <div className="ml-3">
+                            <div className="text-sm font-medium">
+                              {member.user?.name || "Membre d'équipe"}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {member.role || "Rôle non spécifié"}
+                            </div>
                           </div>
                         </div>
+                        <button
+                          onClick={() => removeTeamMember(member._id)}
+                          className="text-red-500 hover:bg-red-50 p-2 rounded-full"
+                          title="Supprimer le membre"
+                        >
+                          <FaTrash />
+                        </button>
                       </li>
                     ))}
                   </ul>
@@ -443,8 +525,8 @@ function ProjectDetailPage() {
               </div>
 
               <div className="bg-white rounded-lg shadow-lg border border-gray-100 p-6">
-                <h2 className="text-xl font-bold text-teal-800 mb-4 border-b pb-2">
-                  <div className="flex items-center">
+                <div className="flex justify-between items-center mb-4 border-b pb-2">
+                  <h2 className="text-xl font-bold text-teal-800 flex items-center">
                     <FaFlask className="mr-2" />
                     Échantillons
                     {project.samples && project.samples.length > 0 && (
@@ -452,8 +534,15 @@ function ProjectDetailPage() {
                         {project.samples.length}
                       </span>
                     )}
-                  </div>
-                </h2>
+                  </h2>
+                  <button
+                    onClick={addSample}
+                    className="text-teal-600 hover:bg-teal-50 p-2 rounded-full"
+                    title="Ajouter un échantillon"
+                  >
+                    <FaPlus />
+                  </button>
+                </div>
 
                 {project.samples && project.samples.length > 0 ? (
                   <div className="overflow-x-auto">
@@ -468,6 +557,9 @@ function ProjectDetailPage() {
                           </th>
                           <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">
                             Statut
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">
+                            Actions
                           </th>
                         </tr>
                       </thead>
@@ -498,6 +590,15 @@ function ProjectDetailPage() {
                                 {sample.status}
                               </span>
                             </td>
+                            <td className="px-3 py-2 whitespace-nowrap">
+                              <button
+                                onClick={() => removeSample(sample._id)}
+                                className="text-red-500 hover:bg-red-50 p-2 rounded-full"
+                                title="Supprimer l'échantillon"
+                              >
+                                <FaTrash />
+                              </button>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -508,8 +609,7 @@ function ProjectDetailPage() {
                     <FaFlask className="mx-auto text-gray-300 text-4xl mb-2" />
                     <p className="text-gray-500">
                       Aucun échantillon associé à ce projet
-                      </p>
-                      
+                    </p>
                   </div>
                 )}
               </div>
