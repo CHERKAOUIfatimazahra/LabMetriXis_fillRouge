@@ -20,7 +20,8 @@ import ProjectCreatePage from "./pages/dashboard/researcher/createProject/Projec
 import AddSample from "./pages/dashboard/researcher/createProject/AddSample";
 import ProjectListPage from "./pages/dashboard/researcher/ProjectListPage";
 import ProjectDetailPage from "./pages/dashboard/researcher/ProjectDetailPage";
-import ProjectEditPage from "./pages/dashboard/researcher/ProjectEditPage";
+import CreatePublicationPage from "./pages/dashboard/researcher/CreatePublicationPage";
+import UpdateProjectPage from "./pages/dashboard/researcher/UpdateProjectPage";
 
 // dashboard technicien
 import TechnicianDashboard from "./pages/dashboard/technicien/TechnicianDashboard";
@@ -136,14 +137,13 @@ function App() {
           }
         />
 
-        {/* édite */}
+        <Route
+          path="/dashboard/researcher/projects/:projectId/create-publication"
+          element={<CreatePublicationPage />}
+        />
         <Route
           path="/dashboard/researcher/projects/:projectId/edit"
-          element={
-            <PrivateRoute allowedRoles={["chercheur", "admin"]}>
-              <ProjectEditPage />
-            </PrivateRoute>
-          }
+          element={<UpdateProjectPage />}
         />
 
         {/* technicien dashboard */}
