@@ -20,7 +20,6 @@ exports.createProject = async (req, res) => {
       teamMembers,
     } = req.body;
 
-    // Validate required fields
     if (
       !projectName ||
       !researchDomains ||
@@ -32,15 +31,11 @@ exports.createProject = async (req, res) => {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
-    // Create project
     const project = new Project({
       projectName,
       researchDomain: researchDomains,
       teamLead,
-      teamMembers: teamMembers.map((member) => ({
-        user: member.id,
-        role: member.role,
-      })),
+      teamMembers,
       fundingSource,
       budget,
       startDate,
@@ -57,7 +52,6 @@ exports.createProject = async (req, res) => {
     res.status(201).json({
       message: "Project created successfully",
       project,
-      projectId: project._id,
     });
   } catch (error) {
     console.error("Project creation error:", error);
@@ -74,7 +68,6 @@ exports.addSampleToProject = async (req, res) => {
       sampleData = JSON.parse(req.body.sampleData);
     }
 
-    // Create new sample with project reference
     const sample = new Sample({
       name: sampleData.name,
       description: sampleData.description,
@@ -101,7 +94,6 @@ exports.addSampleToProject = async (req, res) => {
 
     await sample.save();
 
-    // Add sample to project
     await Project.findByIdAndUpdate(projectId, {
       $push: { samples: sample._id },
     });
@@ -130,9 +122,6 @@ exports.getSamplesByProject = async (req, res) => {
 
 exports.getAllProjects = async (req, res) => {
   try {
-    // console.log("User ID:", req.user.id);
-
-    // Récupérer les projets de l'utilisateur
     const projects = await Project.find({
       $or: [
         { createdBy: req.user.id },
@@ -142,11 +131,9 @@ exports.getAllProjects = async (req, res) => {
     })
       .populate("samples")
       .populate("teamLead", "name email")
+      .sort({ createdAt: -1 })
       .lean();
 
-    // console.log("Projects found:", projects.length);
-
-    // Calcul de la progression des projets
     const projectsWithProgress = projects.map((project) => {
       const totalSamples = project.samples ? project.samples.length : 0;
       const analyzedSamples = project.samples
@@ -179,16 +166,15 @@ exports.getProjectById = async (req, res) => {
     const id = req.params.projectId;
     const project = await Project.findById(id)
       .populate("samples")
-      .populate("teamLead", "name email")
-      .populate("teamMembers.user", "name email")
-      .sort({ createdAt: -1 })
-      .lean();
+      .populate("teamLead", "name email institution")
+      .populate("teamMembers", "name email institution")
+      .lean()
+      .exec();
 
     if (!project) {
       return res.status(404).json({ error: "Projet non trouvé" });
     }
 
-    // Calcul de la progression des projets
     const totalSamples = project.samples ? project.samples.length : 0;
     const analyzedSamples = project.samples
       ? project.samples.filter((sample) => sample.status === "Analyzed").length
@@ -200,8 +186,10 @@ exports.getProjectById = async (req, res) => {
         : Math.round((analyzedSamples / totalSamples) * 100);
 
     res.json({
-      project,
-      progress,
+      project: {
+        ...project,
+        progress,
+      },
     });
   } catch (error) {
     console.error("Error fetching project:", error);
@@ -209,29 +197,100 @@ exports.getProjectById = async (req, res) => {
   }
 };
 
-// delete sample
+exports.updateProject = async (req, res) => {
+  try {
+    const {
+      projectName,
+      researchDomains,
+      teamLead,
+      fundingSource,
+      budget,
+      startDate,
+      deadline,
+      status,
+      collaboratingInstitutions,
+      description,
+      expectedOutcomes,
+      teamMembers,
+    } = req.body;
+
+    if (
+      !projectName ||
+      !researchDomains ||
+      !teamLead ||
+      !startDate ||
+      !deadline ||
+      !description
+    ) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    const project = await Project.findById(req.params.projectId);
+
+    if (!project) {
+      return res.status(404).json({ message: "Project not found" });
+    }
+
+    project.projectName = projectName;
+    project.researchDomain = researchDomains;
+    project.teamLead = teamLead;
+    project.teamMembers = teamMembers;
+    project.fundingSource = fundingSource;
+    project.budget = budget;
+    project.startDate = startDate;
+    project.deadline = deadline;
+    project.status = status;
+    project.collaboratingInstitutions = collaboratingInstitutions;
+    project.description = description;
+    project.expectedOutcomes = expectedOutcomes;
+
+    await project.save();
+
+    res.status(200).json({
+      message: "Project updated successfully",
+      project,
+    });
+  } catch (error) {
+    console.error("Project update error:", error);
+    res.status(500).json({ error: "Failed to update project" });
+  }
+};
+
 exports.deleteSample = async (req, res) => {
   try {
-    const id = req.params.sampleId;
-    const sample = await Sample.findByIdAndDelete(id);
+    const { projectId, sampleId } = req.params;
+
+    const sample = await Sample.findByIdAndDelete(sampleId);
     if (!sample) {
       return res.status(404).json({ error: "Sample not found" });
     }
-    const project = await Project.findById(sample.projectId);
+
+    const project = await Project.findById(projectId);
     if (!project) {
       return res.status(404).json({ error: "Project not found" });
     }
-// Update project samples count
-    project.samples = project.samples.filter((s) => s._id.toString() !== id);
+
+    project.samples = project.samples.filter(
+      (s) => s._id.toString() !== sampleId
+    );
     await project.save();
-    res.json({ message: "Sample deleted successfully" });
+
+    const updatedProject = await Project.findById(projectId)
+      .populate("samples")
+      .populate("teamLead", "name email institution")
+      .populate("teamMembers", "name email institution")
+      .lean()
+      .exec();
+
+    res.json({
+      message: "Sample deleted successfully",
+      project: updatedProject,
+    });
   } catch (error) {
     console.error("Error deleting sample:", error);
     res.status(500).json({ error: "Failed to delete sample" });
   }
 };
-
-// delete project by role createBy
 
 exports.deleteProjectByRole = async (req, res) => {
   try {
@@ -241,15 +300,12 @@ exports.deleteProjectByRole = async (req, res) => {
       return res.status(404).json({ error: "Project not found" });
     }
 
-    // Vérifier si l'utilisateur est le créateur du projet
     if (project.createdBy.toString() !== req.user._id.toString()) {
       return res.status(403).json({ error: "Forbidden" });
     }
 
-    // Supprimer le projet
     await Project.findByIdAndDelete(id);
 
-    // Mettre à jour le compte des projets de l'utilisateur
     const user = await User.findById(req.user._id);
     user.projects = user.projects.filter((p) => p._id.toString() !== id);
     await user.save();
