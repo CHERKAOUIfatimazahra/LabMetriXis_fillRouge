@@ -11,12 +11,12 @@ const projectSchema = new Schema({
   },
   teamMembers: [
     {
-      user: { type: Schema.Types.ObjectId, ref: "User" },
-      role: { type: String },
+      type: Schema.Types.ObjectId,
+      ref: "User",
     },
   ],
   fundingSource: { type: String },
-  budget: { type: Number },
+  budget: { type: Number }, 
   startDate: { type: Date, required: true },
   deadline: { type: Date, required: true },
   status: {
