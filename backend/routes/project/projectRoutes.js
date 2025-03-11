@@ -11,7 +11,7 @@ const storage = multer.diskStorage({
     cb(null, "uploads/");
   },
   filename: function (req, file, cb) {
-    cb(null, Date.now() + "-" + file.originalname);
+    cb(null, Date.now() + "-" + file.originalname); 
   },
 });
 const upload = multer({ storage: storage });
@@ -67,6 +67,14 @@ router.get(
   projectController.getProjectById
 );
 
+// update project
+router.put(
+  "/projects/:projectId",
+  verifyToken,
+  isChercheur,
+  projectController.updateProject
+);
+
 // delete sample
 router.delete(
   "/projects/:projectId/samples/:sampleId",
@@ -81,6 +89,14 @@ router.delete(
   verifyToken,
   isChercheur,
   projectController.deleteProjectByRole
+);
+
+// delete memebre from project by team leader
+router.delete(
+  "/projects/:projectId/team-members/:userId",
+  verifyToken,
+  isChercheur,
+  userController.deleteMemberFromProject
 );
 
 module.exports = router;
