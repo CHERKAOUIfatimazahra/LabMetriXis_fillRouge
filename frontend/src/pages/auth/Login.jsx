@@ -25,7 +25,6 @@ function Login() {
 
       const { token, user, message } = response.data;
 
-      // Si un OTP est envoyé
       if (message === "OTP sent to email") {
         localStorage.setItem("email", email);
         localStorage.setItem("requiresOTP", "true");
@@ -33,7 +32,6 @@ function Login() {
         return;
       }
 
-      // Si pas d'OTP requis
       if (!token || !user) {
         setError("Réponse du serveur invalide");
         return;
@@ -43,7 +41,6 @@ function Login() {
       localStorage.setItem("user", JSON.stringify(user));
       localStorage.removeItem("requiresOTP");
 
-      // Redirection en fonction du rôle
       switch (user.role) {
         case "admin":
           navigate("/admin/dashboard");
@@ -70,10 +67,10 @@ function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-green-50">
-      <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
-        <h2 className="text-2xl font-bold mb-6 text-green-700 text-center">
-          Login to Laboratoire Search
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-teal-700 to-teal-900 opacity-90">
+      <div className="bg-white p-10 rounded-2xl shadow-lg w-full max-w-md">
+        <h2 className="text-3xl font-extrabold mb-6 text-black text-center">
+          Connexion
         </h2>
 
         {error && (
@@ -91,10 +88,10 @@ function Login() {
               Email
             </label>
             <input
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-green-500"
+              className="shadow-sm border rounded-lg w-full py-2 px-4 text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-700"
               id="email"
               type="email"
-              placeholder="Enter your email"
+              placeholder="Entrez votre email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -106,13 +103,13 @@ function Login() {
               className="block text-gray-700 text-sm font-bold mb-2"
               htmlFor="password"
             >
-              Password
+              Mot de passe
             </label>
             <input
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-green-500"
+              className="shadow-sm border rounded-lg w-full py-2 px-4 text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-700"
               id="password"
               type="password"
-              placeholder="Enter your password"
+              placeholder="Entrez votre mot de passe"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -122,29 +119,29 @@ function Login() {
           <div className="flex items-center justify-between mb-6">
             <Link
               to="/forgot-password"
-              className="text-green-600 hover:text-green-800 text-sm"
+              className="text-teal-700 hover:text-green-800 text-sm"
             >
-              Forgot Password?
+              Mot de passe oublié ?
             </Link>
           </div>
 
           <button
-            className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full"
+            className="bg-gradient-to-br from-teal-700 to-teal-900 opacity-90 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg w-full transition duration-200 ease-in-out transform hover:scale-105"
             type="submit"
             disabled={loading}
           >
-            {loading ? "Processing..." : "Login"}
+            {loading ? "Connexion en cours..." : "Se connecter"}
           </button>
         </form>
 
         <div className="text-center mt-6">
-          <p className="text-sm text-gray-600">
-            Don't have an account?{" "}
+          <p className="text-sm text-teal-700">
+            Pas encore de compte ?
             <Link
               to="/register"
-              className="text-green-600 hover:text-green-800"
+              className="text-teal-900 hover:text-green-800 ml-1"
             >
-              Register here
+              Inscrivez-vous ici
             </Link>
           </p>
         </div>
