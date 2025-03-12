@@ -30,7 +30,10 @@ function ProjectDetailPage() {
   const [project, setProject] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [isEditing, setIsEditing] = useState(false);
+  const [showTeamMemberAlert, setShowTeamMemberAlert] = useState(false);
+  const [showSampleAlert, setShowSampleAlert] = useState(false);
+  const [selectedMemberId, setSelectedMemberId] = useState(null);
+  const [selectedSampleId, setSelectedSampleId] = useState(null);
 
   // Navigation items config (même que dans ProjectListPage)
   const navItems = [
@@ -84,18 +87,17 @@ function ProjectDetailPage() {
     }
   };
 
-  // Function pour calculer la progression (basée sur les dates)
-  const calculateProgress = (startDate, deadline) => {
-    if (!startDate || !deadline) return 0;
-
-    const start = new Date(startDate).getTime();
-    const end = new Date(deadline).getTime();
-    const now = new Date().getTime();
-
-    if (now <= start) return 0;
-    if (now >= end) return 100;
-
-    return Math.round(((now - start) / (end - start)) * 100);
+  // Function pour calculer la progression (basée sur les samples)
+  const calculateProgress = (samples) => {
+    const totalSamples = samples.length;
+    const analyzedSamples = samples.filter(
+      (sample) => sample.status === "Analyzed"
+    ).length;
+    if (totalSamples > 0) {
+      return (analyzedSamples / totalSamples) * 100;
+    } else {
+      return 0;
+    }
   };
 
   // Function pour déterminer la couleur de la progression
@@ -105,83 +107,59 @@ function ProjectDetailPage() {
     return "bg-yellow-500";
   };
 
-  // Modifier les fonctions d'ajout et de suppression
-  const addTeamMember = async () => {
-    try {
-      const response = await axios.post(
-        `${
-          import.meta.env.VITE_API_URL
-        }/project/projects/${projectId}/team-members`,
-        {
-          name: "",
-          role: "",
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        }
-      );
-
-      setProject(response.data.project);
-      toast.success("Membre ajouté avec succès");
-    } catch (error) {
-      console.error("Error adding team member:", error);
-      toast.error("Erreur lors de l'ajout du membre");
-    }
+  // Function to show team member delete confirmation
+  const confirmTeamMemberDelete = (memberId) => {
+    setSelectedMemberId(memberId);
+    setShowTeamMemberAlert(true);
   };
 
-  const removeTeamMember = async (memberId) => {
+  // Function to show sample delete confirmation
+  const confirmSampleDelete = (sampleId) => {
+    setSelectedSampleId(sampleId);
+    setShowSampleAlert(true);
+  };
+
+  // Function to handle team member deletion
+  const removeTeamMember = async () => {
     try {
+      const token = localStorage.getItem("token");
+
+      // Correct URL structure with projectId and memberId
       const response = await axios.delete(
         `${
           import.meta.env.VITE_API_URL
-        }/project/projects/${projectId}/team-members/${memberId}`,
+        }/project/projects/${projectId}/team-members/${selectedMemberId}`,
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${token}`,
           },
         }
       );
 
-      setProject(response.data.project);
-      toast.success("Membre supprimé avec succès");
+      if (response.data.project) {
+        setProject(response.data.project);
+        toast.success("Membre supprimé avec succès");
+      }
     } catch (error) {
       console.error("Error removing team member:", error);
-      toast.error("Erreur lors de la suppression du membre");
+      if (error.response?.status === 403) {
+        toast.error("Seul le chef d'équipe peut supprimer des membres");
+      } else {
+        console.error("Erreur lors de la suppression du membre");
+      }
+    } finally {
+      setShowTeamMemberAlert(false);
+      setSelectedMemberId(null);
     }
   };
 
-  const addSample = async () => {
-    try {
-      const response = await axios.post(
-        `${import.meta.env.VITE_API_URL}/project/projects/${projectId}/samples`,
-        {
-          name: "",
-          identification: "",
-          type: "",
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        }
-      );
-
-      setProject(response.data.project);
-      toast.success("Échantillon ajouté avec succès");
-    } catch (error) {
-      console.error("Error adding sample:", error);
-      toast.error("Erreur lors de l'ajout de l'échantillon");
-    }
-  };
-
-  const removeSample = async (sampleId) => {
+  // Function to handle sample deletion
+  const removeSample = async () => {
     try {
       const response = await axios.delete(
         `${
           import.meta.env.VITE_API_URL
-        }/project/projects/${projectId}/samples/${sampleId}`,
+        }/project/projects/${projectId}/samples/${selectedSampleId}`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -193,7 +171,16 @@ function ProjectDetailPage() {
       toast.success("Échantillon supprimé avec succès");
     } catch (error) {
       console.error("Error removing sample:", error);
-      toast.error("Erreur lors de la suppression de l'échantillon");
+      if (error.response?.status === 403) {
+        toast.error(
+          "Vous n'avez pas les droits nécessaires pour supprimer cet échantillon"
+        );
+      } else {
+        toast.error("Erreur lors de la suppression de l'échantillon");
+      }
+    } finally {
+      setShowSampleAlert(false);
+      setSelectedSampleId(null);
     }
   };
 
@@ -212,6 +199,7 @@ function ProjectDetailPage() {
         );
 
         setProject(response.data.project);
+        // console.log(response.data);
         setIsLoading(false);
       } catch (err) {
         console.error("Error fetching project details:", err);
@@ -238,11 +226,72 @@ function ProjectDetailPage() {
   }
 
   // Calcul du progrès pour ce projet
-  const progress =
-    project.progress || calculateProgress(project.startDate, project.deadline);
+  const progress = calculateProgress(project.samples);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      {/* Delete Team Member Confirmation Alert */}
+      {showTeamMemberAlert && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md mx-4">
+            <div className="flex items-center text-red-500 mb-4">
+              <FaExclamationTriangle className="mr-2 text-xl" />
+              <h3 className="text-lg font-bold">Confirmation de suppression</h3>
+            </div>
+            <p className="mb-6">
+              Êtes-vous sûr de vouloir supprimer ce membre de l'équipe ? Cette
+              action est irréversible.
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowTeamMemberAlert(false)}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                disabled={isLoading}
+              >
+                Annuler
+              </button>
+              <button
+                onClick={removeTeamMember}
+                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                disabled={isLoading}
+              >
+                {isLoading ? "Suppression..." : "Supprimer"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Sample Confirmation Alert */}
+      {showSampleAlert && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md mx-4">
+            <div className="flex items-center text-red-500 mb-4">
+              <FaExclamationTriangle className="mr-2 text-xl" />
+              <h3 className="text-lg font-bold">Confirmation de suppression</h3>
+            </div>
+            <p className="mb-6">
+              Êtes-vous sûr de vouloir supprimer cet échantillon ? Cette action
+              est irréversible.
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowSampleAlert(false)}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={removeSample}
+                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+              >
+                Supprimer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Header
         title="Research Lab Portal"
         userName="Dr. Roberts"
@@ -442,13 +491,6 @@ function ProjectDetailPage() {
                   <h2 className="text-xl font-bold text-teal-800">
                     Équipe de recherche
                   </h2>
-                  <button
-                    onClick={addTeamMember}
-                    className="text-teal-600 hover:bg-teal-50 p-2 rounded-full"
-                    title="Ajouter un membre"
-                  >
-                    <FaPlus />
-                  </button>
                 </div>
 
                 {project.teamLead && (
@@ -484,31 +526,36 @@ function ProjectDetailPage() {
                 </h3>
                 {project.teamMembers && project.teamMembers.length > 0 ? (
                   <ul className="space-y-2">
-                    {project.teamMembers.map((member, index) => (
+                    {project.teamMembers.map((teamMember, index) => (
                       <li
                         key={index}
                         className="flex items-center justify-between"
                       >
                         <div className="flex items-center">
                           <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-xs font-semibold">
-                            {member.user?.name
-                              ? member.user.name
-                                  .split(" ")
-                                  .map((n) => n[0])
-                                  .join("")
+                            {teamMember.name
+                              ? teamMember.name.split(" ")[0][0] +
+                                (teamMember.name.split(" ")[1]
+                                  ? teamMember.name.split(" ")[1][0]
+                                  : "")
                               : "M"}
                           </div>
                           <div className="ml-3">
                             <div className="text-sm font-medium">
-                              {member.user?.name || "Membre d'équipe"}
+                              {teamMember.name || "Membre d'équipe"}
                             </div>
                             <div className="text-xs text-gray-500">
-                              {member.role || "Rôle non spécifié"}
+                              {teamMember.role || "Rôle non spécifié"}
+                              {teamMember.institution &&
+                                ` - ${teamMember.institution}`}
                             </div>
                           </div>
                         </div>
+
                         <button
-                          onClick={() => removeTeamMember(member._id)}
+                          onClick={() =>
+                            confirmTeamMemberDelete(teamMember._id)
+                          }
                           className="text-red-500 hover:bg-red-50 p-2 rounded-full"
                           title="Supprimer le membre"
                         >
@@ -536,7 +583,11 @@ function ProjectDetailPage() {
                     )}
                   </h2>
                   <button
-                    onClick={addSample}
+                    onClick={() =>
+                      navigate(
+                        `/dashboard/researcher/projects/create/add-sample/${projectId}`
+                      )
+                    }
                     className="text-teal-600 hover:bg-teal-50 p-2 rounded-full"
                     title="Ajouter un échantillon"
                   >
@@ -553,7 +604,7 @@ function ProjectDetailPage() {
                             Nom
                           </th>
                           <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">
-                            Type
+                            protocolFile
                           </th>
                           <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">
                             Statut
@@ -575,8 +626,25 @@ function ProjectDetailPage() {
                               </div>
                             </td>
                             <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
-                              {sample.type}
+                              {sample.protocolFile?.fileName ? (
+                                <a
+                                  href={`${
+                                    import.meta.env.VITE_API_URL
+                                  }/${sample.protocolFile.fileLocation.replace(
+                                    /\\/g,
+                                    "/"
+                                  )}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 hover:underline"
+                                >
+                                  {sample.protocolFile.fileName}
+                                </a>
+                              ) : (
+                                "Aucun fichier"
+                              )}
                             </td>
+
                             <td className="px-3 py-2 whitespace-nowrap">
                               <span
                                 className={`px-2 py-1 text-xs rounded-full ${
@@ -592,7 +660,7 @@ function ProjectDetailPage() {
                             </td>
                             <td className="px-3 py-2 whitespace-nowrap">
                               <button
-                                onClick={() => removeSample(sample._id)}
+                                onClick={() => confirmSampleDelete(sample._id)}
                                 className="text-red-500 hover:bg-red-50 p-2 rounded-full"
                                 title="Supprimer l'échantillon"
                               >
