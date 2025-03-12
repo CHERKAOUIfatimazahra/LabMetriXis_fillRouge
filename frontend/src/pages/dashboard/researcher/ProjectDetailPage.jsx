@@ -212,6 +212,39 @@ function ProjectDetailPage() {
     fetchProjectDetails();
   }, [projectId]);
 
+   const generatePDF = () => {
+      try {
+        const doc = new jsPDF();
+  
+        const title = project?.projectName || "Rapport Final";
+        doc.setFontSize(16);
+        doc.text(title, 20, 20);
+  
+        // Add date
+        doc.setFontSize(12);
+        doc.text(`Date: ${formData.publishedAt}`, 20, 30);
+  
+        // Add content with word wrap
+        doc.setFontSize(12);
+        const splitText = doc.splitTextToSize(formData.content, 170);
+        doc.text(splitText, 20, 40);
+  
+        // Create a safe filename with fallback
+        const safeFilename =
+          project && project.projectName
+            ? project.projectName.replace(/\s+/g, "_")
+            : "rapport";
+  
+        // Save the PDF
+        doc.save(`${safeFilename}_Final_Report.pdf`);
+  
+        toast.success("PDF généré avec succès");
+      } catch (error) {
+        console.error("Error generating PDF:", error);
+        toast.error("Erreur lors de la génération du PDF");
+      }
+    };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -377,12 +410,6 @@ function ProjectDetailPage() {
                     <FaEdit className="mr-2" />
                     Modifier
                   </button>
-                  {project.finalReport && project.finalReport.content && (
-                    <button className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors shadow-md">
-                      <FaFileDownload className="mr-2" />
-                      Télécharger le rapport
-                    </button>
-                  )}
                 </div>
               </div>
             </div>
