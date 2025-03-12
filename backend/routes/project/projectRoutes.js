@@ -99,4 +99,36 @@ router.delete(
   userController.deleteMemberFromProject
 );
 
+// Final report routes
+router.patch(
+  "/projects/:projectId/final-report-draft",
+  verifyToken,
+  isChercheur,
+  projectController.saveFinalReportDraft
+);
+router.patch(
+  "/projects/:projectId/final-report",
+  verifyToken,
+  isChercheur,
+  projectController.publishFinalReport
+);
+router.get(
+  "/projects/:projectId/report-versions",
+  verifyToken,
+  isChercheur,
+  projectController.getReportVersions
+);
+router.get(
+  "/projects/:projectId/report-versions/:versionId",
+  verifyToken,
+  isChercheur,
+  projectController.getReportVersion
+);
+router.post(
+  "/projects/:projectId/upload-report",
+  verifyToken,
+  isChercheur,
+  projectController.uploadReport
+);
+
 module.exports = router;
