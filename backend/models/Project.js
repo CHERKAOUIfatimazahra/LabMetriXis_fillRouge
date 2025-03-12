@@ -40,6 +40,7 @@ const projectSchema = new Schema({
   },
 
   finalReport: {
+    
     content: { type: String },
     publishedAt: { type: Date },
   },
