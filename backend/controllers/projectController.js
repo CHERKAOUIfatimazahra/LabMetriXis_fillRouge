@@ -5,7 +5,7 @@ const User = require("../models/User");
 // Project Management Controllers
 exports.createProject = async (req, res) => {
   // cheque if the project orady exists
-  const project = await Project.findOne({ name: req.body.name });
+  const project = await Project.findOne({ projectName: req.body.name });
   if (project) {
     return res.status(400).json({ message: "Project already exists" });
   }
@@ -57,6 +57,7 @@ exports.createProject = async (req, res) => {
 
     res.status(201).json({
       message: "Project created successfully",
+      projectId: project._id,
       project,
     });
   } catch (error) {
