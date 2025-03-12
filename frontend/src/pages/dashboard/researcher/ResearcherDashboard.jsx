@@ -1,29 +1,36 @@
 import React, { useState, useEffect } from "react";
+import axios from "axios";
 import {
   FaChartLine,
   FaClipboardList,
   FaUsers,
   FaFileAlt,
-  FaBell,
-  FaSearch,
+  FaFlask,
+  FaVial,
+  FaClock,
 } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
 import Header from "../../../components/dashboard/Header";
 import Sidebar from "../../../components/dashboard/Sidebar";
-import { motion } from "framer-motion";
 
-export const ResearcherDashboard = () => {
+function ResearcherDashboard() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("overview");
-  const [isLoading, setIsLoading] = useState(true);
+  const [projects, setProjects] = useState([]);
+  const [recentProjects, setRecentProjects] = useState([]);
+  const [samples, setSamples] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [stats, setStats] = useState({
+    totalProjects: 0,
+    activeProjects: 0,
+    completedProjects: 0,
+    totalSamples: 0,
+    analyzedSamples: 0,
+    inAnalysisSamples: 0,
+  });
 
-  useEffect(() => {
-    // Simuler un chargement
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Navigation items config
+  // Navigation items config - matching ProjectListPage
   const navItems = [
     {
       id: "overview",
@@ -57,138 +64,115 @@ export const ResearcherDashboard = () => {
     },
   ];
 
-  // Quick stats config
-  const quickStats = [
-    {
-      id: 1,
-      label: "Active Projects",
-      value: "8",
-      color: "blue",
-      icon: <FaClipboardList />,
-    },
-    {
-      id: 2,
-      label: "Publications",
-      value: "12",
-      color: "green",
-      icon: <FaFileAlt />,
-    },
-    {
-      id: 3,
-      label: "Team Members",
-      value: "15",
-      color: "purple",
-      icon: <FaUsers />,
-    },
-    {
-      id: 4,
-      label: "Pending Reviews",
-      value: "3",
-      color: "amber",
-      icon: <FaBell />,
-    },
-  ];
-
-  // Données pour les projets récents
-  const recentProjects = [
-    {
-      id: 1,
-      name: "Quantum Computing Research",
-      status: "In Progress",
-      deadline: "March 15, 2025",
-      progress: 65,
-    },
-    {
-      id: 2,
-      name: "Neural Network Analysis",
-      status: "Completed",
-      deadline: "January 30, 2025",
-      progress: 100,
-    },
-    {
-      id: 3,
-      name: "Sustainable Materials Study",
-      status: "Pending Review",
-      deadline: "April 10, 2025",
-      progress: 45,
-    },
-    {
-      id: 4,
-      name: "Climate Change Impact Analysis",
-      status: "In Progress",
-      deadline: "May 22, 2025",
-      progress: 30,
-    },
-  ];
-
-  // Données pour les notifications
-  const notifications = [
-    {
-      id: 1,
-      message: "Meeting with research team scheduled for tomorrow at 10 AM",
-      time: "2 hours ago",
-      type: "info",
-    },
-    {
-      id: 2,
-      message:
-        "Project 'Neural Network Analysis' has been approved for publication",
-      time: "Yesterday",
-      type: "success",
-    },
-    {
-      id: 3,
-      message: "Equipment maintenance scheduled for Lab B on Friday",
-      time: "2 days ago",
-      type: "warning",
-    },
-  ];
-
-  // Animations variants
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-      },
-    },
+  // Status color function from ProjectListPage
+  const getStatusColor = (status) => {
+    switch (status) {
+      case "Completed":
+        return "bg-green-100 text-green-800";
+      case "Active":
+        return "bg-blue-100 text-blue-800";
+      case "Planning":
+        return "bg-yellow-100 text-yellow-800";
+      case "On Hold":
+        return "bg-orange-100 text-orange-800";
+      case "Cancelled":
+        return "bg-red-100 text-red-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
   };
 
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1,
-      transition: {
-        type: "spring",
-        stiffness: 100,
-      },
-    },
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        // Using import.meta.env like in ProjectListPage
+        const API_URL = `${import.meta.env.VITE_API_URL}/project`;
+
+        const { data: projectsData } = await axios.get(`${API_URL}/projects`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        });
+        setProjects(projectsData);
+
+        // Sort projects by start date (newest first) and take only the 5 most recent
+        const sortedProjects = [...projectsData].sort(
+          (a, b) => new Date(b.startDate || 0) - new Date(a.startDate || 0)
+        );
+        setRecentProjects(sortedProjects.slice(0, 5));
+
+        let allSamples = [];
+        for (const project of projectsData) {
+          const { data: samplesData } = await axios.get(
+            `${API_URL}/projects/${project._id}/samples`,
+            {
+              headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+              },
+            }
+          );
+          allSamples = [...allSamples, ...samplesData];
+        }
+        setSamples(allSamples);
+
+        setStats({
+          totalProjects: projectsData.length,
+          activeProjects: projectsData.filter((p) => p.status === "Active")
+            .length,
+          completedProjects: projectsData.filter(
+            (p) => p.status === "Completed"
+          ).length,
+          totalSamples: allSamples.length,
+          analyzedSamples: allSamples.filter((s) => s.status === "Analyzed")
+            .length,
+          inAnalysisSamples: allSamples.filter(
+            (s) => s.status === "In Analysis"
+          ).length,
+        });
+      } catch (err) {
+        setError("Error loading data.");
+        console.error("Error fetching data:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, []);
+
+  const formatDate = (dateString) =>
+    dateString ? new Date(dateString).toLocaleDateString() : "N/A";
+
+  // Function to calculate days since start date
+  const getDaysSinceStart = (dateString) => {
+    if (!dateString) return "N/A";
+    const startDate = new Date(dateString);
+    const today = new Date();
+    const diffTime = Math.abs(today - startDate);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return `${diffDays} days`;
   };
 
-  // Animation pour les chiffres des statistiques
-  const numberAnimation = {
-    initial: { scale: 0.8, opacity: 0 },
-    animate: {
-      scale: 1,
-      opacity: 1,
-      transition: {
-        type: "spring",
-        stiffness: 80,
-        delay: 0.3,
-      },
-    },
-  };
-
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="inline-block w-16 h-16 border-t-4 border-teal-600 border-solid rounded-full animate-spin"></div>
-          <p className="mt-4 text-teal-800 font-medium">
-            Chargement du dashboard...
-          </p>
+          <p className="mt-4 text-teal-800 font-medium">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center text-red-600 bg-red-100 px-6 py-4 rounded-lg shadow">
+          <p className="font-medium">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-4 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition-colors"
+          >
+            Retry
+          </button>
         </div>
       </div>
     );
@@ -196,7 +180,6 @@ export const ResearcherDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      {/* Header Component avec effet de glassmorphism */}
       <Header
         title="Research Lab Portal"
         userName="Dr. Roberts"
@@ -206,349 +189,329 @@ export const ResearcherDashboard = () => {
         hoverColor="text-teal-200"
       />
 
-      {/* Main Content */}
       <div className="container mx-auto px-4 py-6">
         <div className="flex flex-col md:flex-row gap-6">
-          {/* Sidebar Component */}
-          <motion.div
-            initial={{ x: -50, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            transition={{ duration: 0.5 }}
-          >
+          <div>
             <Sidebar
               activeTab={activeTab}
               setActiveTab={setActiveTab}
               navItems={navItems}
-              quickStats={quickStats}
               accentColor="teal"
-              statsTitle="QUICK STATS"
             />
-          </motion.div>
+          </div>
 
-          {/* Main Dashboard Content */}
           <main className="flex-1">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-              className="bg-white rounded-lg shadow-xl p-6 border border-gray-100"
-            >
-              <div className="flex justify-between items-center mb-8">
-                <motion.h2
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.5, delay: 0.3 }}
-                  className="text-2xl font-bold text-teal-800"
-                >
-                  <span className="border-b-4 border-teal-500 pb-1">
-                    Researcher Dashboard
-                  </span>
-                </motion.h2>
+            {/* Welcome Section */}
+            <div className="mb-6 bg-gradient-to-r from-teal-600 to-teal-700 rounded-xl shadow-xl text-white p-6">
+              <h1 className="text-3xl font-bold mb-2">
+                Welcome back, Dr. Roberts
+              </h1>
+              <p className="text-teal-100">
+                You have {stats.activeProjects} active projects and{" "}
+                {stats.inAnalysisSamples} samples currently in analysis.
+              </p>
+            </div>
 
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.3, delay: 0.4 }}
-                  className="relative"
-                >
-                  <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Search..."
-                    className="pl-10 pr-4 py-2 bg-gray-50 rounded-full border border-gray-200 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all duration-300"
-                  />
-                </motion.div>
+            {/* Statistics Section */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+              <div className="bg-white p-4 rounded-lg shadow-md border-l-4 border-blue-500 hover:shadow-lg transition-shadow">
+                <div className="flex items-center">
+                  <div className="p-3 rounded-full bg-blue-100 text-blue-600 mr-4">
+                    <FaClipboardList size={24} />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Total Projects</p>
+                    <p className="text-2xl font-bold text-gray-800">
+                      {stats.totalProjects}
+                    </p>
+                  </div>
+                </div>
               </div>
 
-              {/* Statistics Cards */}
-              <motion.div
-                variants={containerVariants}
-                initial="hidden"
-                animate="visible"
-                className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"
-              >
-                <motion.div
-                  variants={itemVariants}
-                  whileHover={{ y: -5, transition: { duration: 0.2 } }}
-                  className="bg-gradient-to-r from-teal-500 to-teal-600 text-white p-6 rounded-lg shadow-lg relative overflow-hidden"
-                >
-                  <div className="absolute right-0 top-0 w-20 h-20 bg-white opacity-10 rounded-bl-full"></div>
-                  <h3 className="text-lg font-medium mb-2">
-                    Research Progress
-                  </h3>
-                  <motion.p
-                    variants={numberAnimation}
-                    initial="initial"
-                    animate="animate"
-                    className="text-4xl font-bold"
-                  >
-                    68%
-                  </motion.p>
-                  <p className="text-sm opacity-80 mt-2">
-                    4 milestones completed
-                  </p>
-                  <div className="mt-4 bg-white bg-opacity-20 h-2 rounded-full">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: "68%" }}
-                      transition={{ duration: 1, delay: 0.5 }}
-                      className="bg-white h-2 rounded-full"
-                    ></motion.div>
+              <div className="bg-white p-4 rounded-lg shadow-md border-l-4 border-teal-500 hover:shadow-lg transition-shadow">
+                <div className="flex items-center">
+                  <div className="p-3 rounded-full bg-teal-100 text-teal-600 mr-4">
+                    <FaChartLine size={24} />
                   </div>
-                </motion.div>
-
-                <motion.div
-                  variants={itemVariants}
-                  whileHover={{ y: -5, transition: { duration: 0.2 } }}
-                  className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-6 rounded-lg shadow-lg relative overflow-hidden"
-                >
-                  <div className="absolute right-0 top-0 w-20 h-20 bg-white opacity-10 rounded-bl-full"></div>
-                  <h3 className="text-lg font-medium mb-2">Lab Resources</h3>
-                  <motion.p
-                    variants={numberAnimation}
-                    initial="initial"
-                    animate="animate"
-                    className="text-4xl font-bold"
-                  >
-                    85%
-                  </motion.p>
-                  <p className="text-sm opacity-80 mt-2">
-                    15/20 equipment available
-                  </p>
-                  <div className="mt-4 bg-white bg-opacity-20 h-2 rounded-full">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: "85%" }}
-                      transition={{ duration: 1, delay: 0.6 }}
-                      className="bg-white h-2 rounded-full"
-                    ></motion.div>
+                  <div>
+                    <p className="text-sm text-gray-500">Active Projects</p>
+                    <p className="text-2xl font-bold text-gray-800">
+                      {stats.activeProjects}
+                    </p>
                   </div>
-                </motion.div>
-
-                <motion.div
-                  variants={itemVariants}
-                  whileHover={{ y: -5, transition: { duration: 0.2 } }}
-                  className="bg-gradient-to-r from-purple-500 to-purple-600 text-white p-6 rounded-lg shadow-lg relative overflow-hidden"
-                >
-                  <div className="absolute right-0 top-0 w-20 h-20 bg-white opacity-10 rounded-bl-full"></div>
-                  <h3 className="text-lg font-medium mb-2">Research Funding</h3>
-                  <motion.p
-                    variants={numberAnimation}
-                    initial="initial"
-                    animate="animate"
-                    className="text-4xl font-bold"
-                  >
-                    $248K
-                  </motion.p>
-                  <p className="text-sm opacity-80 mt-2">
-                    Budget remaining: $142K
-                  </p>
-                  <div className="mt-4 bg-white bg-opacity-20 h-2 rounded-full">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: "63%" }}
-                      transition={{ duration: 1, delay: 0.7 }}
-                      className="bg-white h-2 rounded-full"
-                    ></motion.div>
-                  </div>
-                </motion.div>
-              </motion.div>
-
-              {/* Recent Projects */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.4 }}
-                className="mb-8"
-              >
-                <h3 className="text-xl font-semibold text-gray-800 mb-4 border-l-4 border-teal-500 pl-3">
-                  Recent Projects
-                </h3>
-                <div className="bg-gray-50 rounded-lg overflow-hidden shadow-md">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-100">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Project Name
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Status
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Deadline
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Progress
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {recentProjects.map((project, index) => (
-                        <motion.tr
-                          key={project.id}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.3, delay: 0.1 * index }}
-                          whileHover={{
-                            backgroundColor: "rgba(237, 242, 247, 0.5)",
-                          }}
-                          className="hover:bg-gray-50 transition-colors duration-150"
-                        >
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center">
-                              <div className="flex-shrink-0 h-8 w-8 bg-teal-100 text-teal-600 rounded-md flex items-center justify-center">
-                                <FaClipboardList />
-                              </div>
-                              <div className="ml-4">
-                                <div className="text-sm font-medium text-gray-900">
-                                  {project.name}
-                                </div>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span
-                              className={`px-3 py-1 text-xs rounded-full ${
-                                project.status === "Completed"
-                                  ? "bg-green-100 text-green-800"
-                                  : project.status === "In Progress"
-                                  ? "bg-blue-100 text-blue-800"
-                                  : "bg-yellow-100 text-yellow-800"
-                              }`}
-                            >
-                              {project.status}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {project.deadline}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="w-full bg-gray-200 rounded-full h-2.5">
-                              <motion.div
-                                className={`h-2.5 rounded-full ${
-                                  project.progress >= 80
-                                    ? "bg-green-500"
-                                    : project.progress >= 50
-                                    ? "bg-blue-500"
-                                    : "bg-yellow-500"
-                                }`}
-                                initial={{ width: 0 }}
-                                animate={{ width: `${project.progress}%` }}
-                                transition={{
-                                  duration: 1,
-                                  delay: 0.5 + index * 0.1,
-                                }}
-                              ></motion.div>
-                            </div>
-                            <span className="text-xs text-gray-500 mt-1">
-                              {project.progress}%
-                            </span>
-                          </td>
-                        </motion.tr>
-                      ))}
-                    </tbody>
-                  </table>
                 </div>
-                <motion.button
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="mt-4 bg-teal-50 text-teal-600 hover:bg-teal-100 transition-colors duration-300 py-2 px-4 rounded-md text-sm font-medium flex items-center float-right"
+              </div>
+
+              <div className="bg-white p-4 rounded-lg shadow-md border-l-4 border-green-500 hover:shadow-lg transition-shadow">
+                <div className="flex items-center">
+                  <div className="p-3 rounded-full bg-green-100 text-green-600 mr-4">
+                    <FaVial size={24} />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Total Samples</p>
+                    <p className="text-2xl font-bold text-gray-800">
+                      {stats.totalSamples}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white p-4 rounded-lg shadow-md border-l-4 border-purple-500 hover:shadow-lg transition-shadow">
+                <div className="flex items-center">
+                  <div className="p-3 rounded-full bg-purple-100 text-purple-600 mr-4">
+                    <FaFlask size={24} />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Analyzed Samples</p>
+                    <p className="text-2xl font-bold text-gray-800">
+                      {stats.analyzedSamples}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Recent Projects */}
+            <div className="bg-white rounded-lg shadow-xl p-6 border border-gray-100 mb-6">
+              <div className="flex justify-between items-center mb-6">
+                <h1 className="text-2xl font-bold text-teal-800">
+                  <span className="border-b-4 border-teal-500 pb-1">
+                    Recent Projects
+                  </span>
+                </h1>
+                <button
+                  onClick={() => navigate("/dashboard/researcher/projects")}
+                  className="text-teal-600 hover:text-teal-800 font-medium flex items-center transition-colors"
                 >
                   View All Projects
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    className="h-4 w-4 ml-1"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
+                    className="h-5 w-5 ml-1"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
                   >
                     <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 5l7 7-7 7"
+                      fillRule="evenodd"
+                      d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                      clipRule="evenodd"
                     />
                   </svg>
-                </motion.button>
-              </motion.div>
+                </button>
+              </div>
 
-              {/* Notifications */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.6 }}
-              >
-                <h3 className="text-xl font-semibold text-gray-800 mb-4 border-l-4 border-teal-500 pl-3">
-                  Recent Notifications
-                </h3>
-                <div className="space-y-3">
-                  {notifications.map((notification, index) => (
-                    <motion.div
-                      key={notification.id}
-                      initial={{ x: -20, opacity: 0 }}
-                      animate={{ x: 0, opacity: 1 }}
-                      transition={{ duration: 0.3, delay: 0.1 * index + 0.7 }}
-                      whileHover={{ x: 5 }}
-                      className={`p-4 rounded-md border-l-4 shadow-sm ${
-                        notification.type === "success"
-                          ? "bg-green-50 border-green-500"
-                          : notification.type === "warning"
-                          ? "bg-yellow-50 border-yellow-500"
-                          : "bg-blue-50 border-blue-500"
-                      } transition-all duration-200`}
-                    >
-                      <div className="flex">
-                        <div
-                          className={`flex-shrink-0 h-8 w-8 flex items-center justify-center rounded-full ${
-                            notification.type === "success"
-                              ? "bg-green-100 text-green-600"
-                              : notification.type === "warning"
-                              ? "bg-yellow-100 text-yellow-600"
-                              : "bg-blue-100 text-blue-600"
-                          }`}
+              <div className="overflow-x-auto bg-white rounded-lg shadow-sm border border-gray-100">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Project Name
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Research Domain
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Start Date
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Duration
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {recentProjects.length > 0 ? (
+                      recentProjects.map((project) => (
+                        <tr
+                          key={project._id}
+                          className="hover:bg-gray-50 transition-colors duration-150"
                         >
-                          <FaBell className="h-4 w-4" />
-                        </div>
-                        <div className="ml-3">
-                          <p className="text-sm text-gray-800">
-                            {notification.message}
-                          </p>
-                          <p className="text-xs text-gray-500 mt-1">
-                            {notification.time}
-                          </p>
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
+                          <td className="px-6 py-4">
+                            <div className="flex items-start">
+                              <div className="flex-shrink-0 h-10 w-10 rounded-lg bg-teal-100 flex items-center justify-center text-teal-600">
+                                <FaClipboardList size={18} />
+                              </div>
+                              <div className="ml-4">
+                                <div className="text-sm font-medium text-gray-900">
+                                  {project.projectName}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-500">
+                            {project.researchDomain || "N/A"}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-500">
+                            {formatDate(project.startDate)}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-500">
+                            <div className="flex items-center">
+                              <FaClock
+                                className="text-gray-400 mr-2"
+                                size={14}
+                              />
+                              {getDaysSinceStart(project.startDate)}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span
+                              className={`px-3 py-1 text-xs rounded-full ${getStatusColor(
+                                project.status
+                              )}`}
+                            >
+                              {project.status || "N/A"}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                            <button
+                              onClick={() =>
+                                navigate(
+                                  `/dashboard/researcher/projects/${project._id}`
+                                )
+                              }
+                              className="text-teal-600 hover:text-teal-900 bg-teal-100 hover:bg-teal-200 p-2 rounded-full transition-colors duration-200"
+                              title="View Project Details"
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="h-4 w-4"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                                />
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                                />
+                              </svg>
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td
+                          colSpan="6"
+                          className="px-6 py-10 text-center text-gray-500"
+                        >
+                          No projects found.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Sample Analysis Status */}
+            <div className="bg-white rounded-lg shadow-xl p-6 border border-gray-100">
+              <div className="flex justify-between items-center mb-6">
+                <h1 className="text-2xl font-bold text-teal-800">
+                  <span className="border-b-4 border-teal-500 pb-1">
+                    Sample Analysis Status
+                  </span>
+                </h1>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
+                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 hover:shadow-md transition-shadow">
+                  <div className="flex items-center">
+                    <div className="p-3 rounded-full bg-teal-100 text-teal-600 mr-4">
+                      <FaVial size={24} />
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Total Samples</p>
+                      <p className="text-xl font-bold text-gray-800">
+                        {stats.totalSamples}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-3 pl-14">
+                    <div className="h-2 bg-gray-200 rounded-full">
+                      <div
+                        className="h-2 bg-teal-500 rounded-full"
+                        style={{ width: "100%" }}
+                      ></div>
+                    </div>
+                  </div>
                 </div>
-                <motion.button
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="mt-4 bg-teal-50 text-teal-600 hover:bg-teal-100 transition-colors duration-300 py-2 px-4 rounded-md text-sm font-medium flex items-center"
-                >
-                  View all notifications
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-4 w-4 ml-1"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 5l7 7-7 7"
-                    />
-                  </svg>
-                </motion.button>
-              </motion.div>
-            </motion.div>
+
+                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 hover:shadow-md transition-shadow">
+                  <div className="flex items-center">
+                    <div className="p-3 rounded-full bg-blue-100 text-blue-600 mr-4">
+                      <FaFlask size={24} />
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">In Analysis</p>
+                      <p className="text-xl font-bold text-gray-800">
+                        {stats.inAnalysisSamples}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-3 pl-14">
+                    <div className="h-2 bg-gray-200 rounded-full">
+                      <div
+                        className="h-2 bg-blue-500 rounded-full"
+                        style={{
+                          width: `${
+                            stats.totalSamples > 0
+                              ? (stats.inAnalysisSamples / stats.totalSamples) *
+                                100
+                              : 0
+                          }%`,
+                        }}
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 hover:shadow-md transition-shadow">
+                  <div className="flex items-center">
+                    <div className="p-3 rounded-full bg-green-100 text-green-600 mr-4">
+                      <FaClipboardList size={24} />
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Analyzed</p>
+                      <p className="text-xl font-bold text-gray-800">
+                        {stats.analyzedSamples}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-3 pl-14">
+                    <div className="h-2 bg-gray-200 rounded-full">
+                      <div
+                        className="h-2 bg-green-500 rounded-full"
+                        style={{
+                          width: `${
+                            stats.totalSamples > 0
+                              ? (stats.analyzedSamples / stats.totalSamples) *
+                                100
+                              : 0
+                          }%`,
+                        }}
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </main>
         </div>
       </div>
     </div>
   );
-};
+}
 
 export default ResearcherDashboard;
