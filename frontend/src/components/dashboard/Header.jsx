@@ -1,14 +1,42 @@
-import React from "react";
-import { FaFlask, FaBell } from "react-icons/fa";
+import React, { useEffect, useState } from "react";
+import { FaFlask, FaBell, FaSignOutAlt } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
 
-const Header = ({
-  title,
-  userName,
-  userInitials,
-  notificationCount,
-  bgColor,
-  hoverColor,
-}) => {
+const Header = ({ title, notificationCount, bgColor, hoverColor }) => {
+  const [userName, setUserName] = useState("");
+  const [userInitials, setUserInitials] = useState("");
+  const navigate = useNavigate();
+
+  // Récupération des informations de l'utilisateur depuis localStorage
+  useEffect(() => {
+    const userData = localStorage.getItem("user");
+
+    if (userData) {
+      try {
+        const user = JSON.parse(userData);
+        const fullName = user.name || "Utilisateur";
+        setUserName(fullName);
+
+        // Générer les initiales
+        const initials = fullName
+          .split(" ")
+          .map((n) => n[0])
+          .join("")
+          .toUpperCase();
+        setUserInitials(initials);
+      } catch (error) {
+        console.error("Erreur lors du parsing des données utilisateur:", error);
+      }
+    }
+  }, []);
+
+  // Fonction de déconnexion
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    navigate("/login");
+  };
+
   return (
     <header className={`${bgColor} text-white shadow-md`}>
       <div className="container mx-auto px-4 py-3 flex justify-between items-center">
@@ -36,6 +64,13 @@ const Header = ({
               {userName}
             </span>
           </div>
+          <button
+            onClick={handleLogout}
+            className="flex items-center space-x-2 bg-red-600 hover:bg-red-700 px-3 py-1 rounded-md text-sm"
+          >
+            <FaSignOutAlt />
+            <span>Déconnexion</span>
+          </button>
         </div>
       </div>
     </header>
