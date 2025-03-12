@@ -29,7 +29,10 @@ import {
   FaDownload,
   FaImage,
   FaTable,
+  FaFilePdf,
+  FaHistory,
 } from "react-icons/fa";
+import { jsPDF } from "jspdf";
 
 function CreateFinalReportPage() {
   const { projectId } = useParams();
@@ -40,14 +43,18 @@ function CreateFinalReportPage() {
   const [project, setProject] = useState(null);
   const [formData, setFormData] = useState({
     content: "",
-    publishedAt: new Date().toISOString().substr(0, 10),
+    publishedAt: new Date().toISOString().substring(0, 10),
   });
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
+  const [versionHistory, setVersionHistory] = useState([]);
   const fileInputRef = useRef(null);
+  const textareaRef = useRef(null);
+  const autoSaveTimerRef = useRef(null);
 
   useEffect(() => {
-    // Fetch project details when component mounts
     const fetchProject = async () => {
       try {
+        setLoading(true);
         const response = await axios.get(
           `${import.meta.env.VITE_API_URL}/project/projects/${projectId}`,
           {
@@ -58,23 +65,46 @@ function CreateFinalReportPage() {
         );
         setProject(response.data);
 
-        // Pre-populate with existing data if available
         if (response.data.finalReport && response.data.finalReport.content) {
           setFormData({
             content: response.data.finalReport.content,
             publishedAt: new Date(response.data.finalReport.publishedAt)
               .toISOString()
-              .substr(0, 10),
+              .substring(0, 10),
           });
         }
+
+        fetchVersionHistory();
+        // console.log(response.data);
+        setLoading(false);
       } catch (error) {
         console.error("Error fetching project:", error);
         toast.error("Erreur lors du chargement du projet");
+        setLoading(false);
       }
     };
 
     fetchProject();
   }, [projectId]);
+
+  // Function to fetch version
+  const fetchVersionHistory = async () => {
+    try {
+      const response = await axios.get(
+        `${
+          import.meta.env.VITE_API_URL
+        }/project/projects/${projectId}/report-versions`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+      setVersionHistory(response.data);
+    } catch (error) {
+      console.error("Error fetching version history:", error);
+    }
+  };
 
   const navItems = [
     {
@@ -109,7 +139,7 @@ function CreateFinalReportPage() {
       await axios.patch(
         `${
           import.meta.env.VITE_API_URL
-        }/projects/${projectId}/final-report-draft`,
+        }/project/projects/${projectId}/final-report-draft`,
         formData,
         {
           headers: {
@@ -118,6 +148,7 @@ function CreateFinalReportPage() {
         }
       );
       toast.success("Brouillon sauvegardé avec succès");
+      fetchVersionHistory();
     } catch (error) {
       console.error("Error saving draft:", error);
       toast.error("Erreur lors de la sauvegarde du brouillon");
@@ -132,7 +163,9 @@ function CreateFinalReportPage() {
 
     try {
       await axios.patch(
-        `${import.meta.env.VITE_API_URL}/projects/${projectId}/final-report`,
+        `${
+          import.meta.env.VITE_API_URL
+        }/project/projects/${projectId}/final-report`,
         formData,
         {
           headers: {
@@ -161,37 +194,144 @@ function CreateFinalReportPage() {
 
     const reader = new FileReader();
     reader.onload = (event) => {
-      // For now, we'll just set the file content as plain text
-      // In a real implementation, you would parse the document format
       setFormData({
         ...formData,
         content: event.target.result,
       });
       toast.success(`Fichier "${file.name}" importé avec succès`);
+      setAutoSaveStatus("Non sauvegardé");
     };
     reader.readAsText(file);
   };
 
-  const downloadReport = () => {
-    // Create a downloadable file
-    const element = document.createElement("a");
-    const file = new Blob([formData.content], { type: "text/plain" });
-    element.href = URL.createObjectURL(file);
-    element.download = `${project.projectName.replace(
-      /\s+/g,
-      "_"
-    )}_Final_Report.txt`;
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
+  const generatePDF = () => {
+    try {
+      const doc = new jsPDF();
+
+      const title = project?.projectName || "Rapport Final";
+      doc.setFontSize(16);
+      doc.text(title, 20, 20);
+
+      // Add date
+      doc.setFontSize(12);
+      doc.text(`Date: ${formData.publishedAt}`, 20, 30);
+
+      // Add content with word wrap
+      doc.setFontSize(12);
+      const splitText = doc.splitTextToSize(formData.content, 170);
+      doc.text(splitText, 20, 40);
+
+      // Create a safe filename with fallback
+      const safeFilename =
+        project && project.projectName
+          ? project.projectName.replace(/\s+/g, "_")
+          : "rapport";
+
+      // Save the PDF
+      doc.save(`${safeFilename}_Final_Report.pdf`);
+
+      toast.success("PDF généré avec succès");
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      toast.error("Erreur lors de la génération du PDF");
+    }
+  };
+  const loadVersion = async (versionId) => {
+    try {
+      const response = await axios.get(
+        `${
+          import.meta.env.VITE_API_URL
+        }/project/projects/${projectId}/report-versions/${versionId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+
+      setFormData({
+        ...formData,
+        content: response.data.content,
+      });
+
+      toast.info("Version précédente chargée");
+      setShowVersionHistory(false);
+    } catch (error) {
+      console.error("Error loading version:", error);
+      toast.error("Erreur lors du chargement de la version");
+    }
   };
 
-  // Dummy function for text formatting buttons (would be implemented with a rich text editor)
   const formatText = (format) => {
-    // In a real implementation, this would apply formatting to the selected text
-    toast.info(
-      `Fonction de formatage "${format}" à implémenter avec un éditeur de texte riche`
-    );
+    // Get textarea element
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    // Get selection start and end positions
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = formData.content.substring(start, end);
+
+    let formattedText = selectedText;
+    let cursorOffset = 0;
+
+    // Apply formatting based on the format type
+    switch (format) {
+      case "bold":
+        formattedText = `**${selectedText}**`;
+        cursorOffset = 2;
+        break;
+      case "italic":
+        formattedText = `*${selectedText}*`;
+        cursorOffset = 1;
+        break;
+      case "heading":
+        formattedText = `\n# ${selectedText}\n`;
+        cursorOffset = 3;
+        break;
+      case "bullet-list":
+        formattedText = selectedText
+          .split("\n")
+          .map((line) => `- ${line}`)
+          .join("\n");
+        cursorOffset = 2;
+        break;
+      case "numbered-list":
+        formattedText = selectedText
+          .split("\n")
+          .map((line, i) => `${i + 1}. ${line}`)
+          .join("\n");
+        cursorOffset = 3;
+        break;
+      default:
+        // For other formatting, show toast
+        toast.info(
+          `Fonction de formatage "${format}" à implémenter avec un éditeur de texte riche`
+        );
+        return;
+    }
+
+    // Update content with formatted text
+    const newContent =
+      formData.content.substring(0, start) +
+      formattedText +
+      formData.content.substring(end);
+
+    setFormData({
+      ...formData,
+      content: newContent,
+    });
+
+    // Set cursor position after formatting tags
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(
+        start + cursorOffset,
+        start + formattedText.length - cursorOffset
+      );
+    }, 0);
+
+    setAutoSaveStatus("Non sauvegardé");
   };
 
   return (
@@ -225,67 +365,15 @@ function CreateFinalReportPage() {
                 <FaArrowLeft className="mr-2" />
                 <span>Retour au projet</span>
               </button>
-
-              <div className="text-sm text-gray-600">
-                Document • {formData.content.split(/\s+/).length} mots
-              </div>
             </div>
 
-            {project && (
+            {loading ? (
+              <div className="bg-white rounded-lg shadow-xl p-8 text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-700 mx-auto mb-4"></div>
+                <p className="text-gray-600">Chargement du projet...</p>
+              </div>
+            ) : project ? (
               <div className="bg-white rounded-lg shadow-xl overflow-hidden">
-                {/* Project Summary Header */}
-                <div className="bg-teal-700 text-white p-6">
-                  <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-                    <div>
-                      <h1 className="text-xl md:text-2xl font-bold mb-1">
-                        {project.projectName}
-                      </h1>
-                      <p className="text-teal-100">{project.researchDomain}</p>
-                    </div>
-                    <div className="mt-4 md:mt-0">
-                      <span className="inline-flex items-center px-3 py-1 rounded-full bg-teal-600 text-sm font-medium">
-                        <FaFileAlt className="mr-2" />
-                        Rapport Final
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Project Info Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-teal-50">
-                  <div className="bg-white p-3 rounded-lg shadow flex items-center">
-                    <div className="bg-teal-100 p-2 rounded-full mr-3">
-                      <FaCalendarAlt className="text-teal-700" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">Date de fin</p>
-                      <p className="font-medium">
-                        {new Date(project.deadline).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="bg-white p-3 rounded-lg shadow flex items-center">
-                    <div className="bg-teal-100 p-2 rounded-full mr-3">
-                      <FaCheckCircle className="text-teal-700" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">Statut</p>
-                      <p className="font-medium">{project.status}</p>
-                    </div>
-                  </div>
-
-                  <div className="bg-white p-3 rounded-lg shadow flex items-center">
-                    <div className="bg-teal-100 p-2 rounded-full mr-3">
-                      <FaFile className="text-teal-700" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">Rapport final</p>
-                      <p className="font-medium text-teal-600">En création</p>
-                    </div>
-                  </div>
-                </div>
-
                 {/* Form Section with Word-like UI */}
                 <div className="p-6">
                   <h2 className="text-xl font-bold text-teal-800 mb-6 flex items-center">
@@ -315,15 +403,15 @@ function CreateFinalReportPage() {
 
                       <div className="w-full md:w-1/2 flex flex-col">
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Importer/Exporter
+                          Gestion du document
                         </label>
                         <div className="flex gap-2 h-full">
                           <button
                             type="button"
                             onClick={handleUploadReport}
-                            className="flex-1 flex items-center justify-center gap-2 rounded-md border border-gray-300 bg-white py-2 px-4 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+                            className="flex-1 flex items-center justify-center gap-2 rounded-md border border-gray-300 bg-white py-2 px-3 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
                           >
-                            <FaUpload /> Importer
+                            <FaUpload /> Importer texte
                           </button>
                           <input
                             type="file"
@@ -334,14 +422,96 @@ function CreateFinalReportPage() {
                           />
                           <button
                             type="button"
-                            onClick={downloadReport}
-                            className="flex-1 flex items-center justify-center gap-2 rounded-md border border-gray-300 bg-white py-2 px-4 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+                            onClick={generatePDF}
+                            className="flex-1 flex items-center justify-center gap-2 rounded-md border border-gray-300 bg-white py-2 px-3 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
                           >
-                            <FaDownload /> Exporter
+                            <FaFilePdf /> Générer PDF
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setShowVersionHistory(!showVersionHistory)
+                            }
+                            className="flex-1 flex items-center justify-center gap-2 rounded-md border border-gray-300 bg-white py-2 px-3 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+                          >
+                            <FaHistory /> Historique
                           </button>
                         </div>
                       </div>
                     </div>
+
+                    {/* Version history panel */}
+                    {showVersionHistory && (
+                      <div className="bg-gray-50 rounded-lg border border-gray-300 p-4 mt-2">
+                        <h3 className="font-medium text-gray-700 mb-3">
+                          Versions précédentes
+                        </h3>
+                        {versionHistory.length === 0 ? (
+                          <p className="text-gray-500 text-sm">
+                            Aucune version précédente disponible
+                          </p>
+                        ) : (
+                          <div className="max-h-48 overflow-y-auto">
+                            <table className="min-w-full divide-y divide-gray-200">
+                              <thead className="bg-gray-100">
+                                <tr>
+                                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Date
+                                  </th>
+                                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Taille
+                                  </th>
+                                  <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Action
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody className="bg-white divide-y divide-gray-200">
+                                {versionHistory.map((version, index) => (
+                                  <tr
+                                    key={version.id || index}
+                                    className="hover:bg-gray-50"
+                                  >
+                                    <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-700">
+                                      {new Date(
+                                        version.createdAt
+                                      ).toLocaleString()}
+                                    </td>
+                                    <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-700">
+                                      {version.content?.length
+                                        ? `${
+                                            Math.round(
+                                              (version.content.length / 1024) *
+                                                10
+                                            ) / 10
+                                          } KB`
+                                        : "N/A"}
+                                    </td>
+                                    <td className="px-3 py-2 whitespace-nowrap text-right text-sm font-medium">
+                                      <button
+                                        onClick={() => loadVersion(version._id)}
+                                        className="text-teal-600 hover:text-teal-900"
+                                      >
+                                        Charger
+                                      </button>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                        <div className="mt-3 flex justify-end">
+                          <button
+                            type="button"
+                            onClick={() => setShowVersionHistory(false)}
+                            className="text-sm text-gray-600 hover:text-gray-900"
+                          >
+                            Fermer
+                          </button>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Word-like text editor toolbar */}
                     <div className="rounded-t-lg border border-gray-300 border-b-0 overflow-hidden">
@@ -462,13 +632,15 @@ function CreateFinalReportPage() {
                     {/* Main text editor */}
                     <div className="rounded-b-lg border border-gray-300 overflow-hidden mt-0 shadow-sm">
                       <textarea
+                        ref={textareaRef}
                         value={formData.content}
-                        onChange={(e) =>
+                        onChange={(e) => {
                           setFormData({
                             ...formData,
                             content: e.target.value,
-                          })
-                        }
+                          });
+                          setAutoSaveStatus("Non sauvegardé");
+                        }}
                         rows={25}
                         placeholder="Rédigez le rapport final de votre projet de recherche ici. Incluez les sections suivantes: Titre, Résumé, Introduction, Méthodologie, Résultats, Discussion, Conclusion, Références."
                         className="block w-full border-0 focus:ring-0 resize-y p-6"
@@ -530,6 +702,24 @@ function CreateFinalReportPage() {
                       </button>
                     </div>
                   </form>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-white rounded-lg shadow-xl p-8 text-center">
+                <div className="text-gray-600">
+                  <FaFileAlt className="mx-auto text-4xl text-gray-400 mb-4" />
+                  <p className="text-lg">Projet non trouvé</p>
+                  <p className="text-sm mt-2">
+                    Le projet que vous recherchez n'existe pas ou vous n'avez
+                    pas les permissions nécessaires.
+                  </p>
+                  <button
+                    onClick={() => navigate("/dashboard/researcher/projects")}
+                    className="mt-4 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors inline-flex items-center"
+                  >
+                    <FaArrowLeft className="mr-2" />
+                    Retour aux projets
+                  </button>
                 </div>
               </div>
             )}
