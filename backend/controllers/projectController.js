@@ -329,3 +329,158 @@ exports.deleteProjectByRole = async (req, res) => {
     res.status(500).json({ error: "Failed to delete project" });
   }
 };
+
+// Save draft of final report
+exports.saveFinalReportDraft = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const { content, publishedAt } = req.body;
+
+    const project = await Project.findById(projectId);
+    if (!project) {
+      return res.status(404).json({ message: "Project not found" });
+    }
+
+    // Save the current version to version history
+    if (!project.reportVersions) {
+      project.reportVersions = [];
+    }
+
+    // Add current version to history
+    project.reportVersions.push({
+      content,
+      createdAt: new Date(),
+      createdBy: req.user._id,
+    });
+
+    // Update the draft
+    project.finalReport = {
+      content,
+      publishedAt,
+      lastModified: new Date(),
+      status: "draft",
+    };
+
+    await project.save();
+
+    res.status(200).json({
+      message: "Draft saved successfully",
+      finalReport: project.finalReport,
+    });
+  } catch (error) {
+    console.error("Error saving draft:", error);
+    res.status(500).json({ message: "Failed to save draft" });
+  }
+};
+
+// Publish final report
+exports.publishFinalReport = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const { content, publishedAt } = req.body;
+
+    const project = await Project.findById(projectId);
+    if (!project) {
+      return res.status(404).json({ message: "Project not found" });
+    }
+
+    // Update the final report
+    project.finalReport = {
+      content,
+      publishedAt,
+      lastModified: new Date(),
+      status: "published",
+      publishedBy: req.user._id,
+    };
+
+    await project.save();
+
+    res.status(200).json({
+      message: "Final report published successfully",
+      finalReport: project.finalReport,
+    });
+  } catch (error) {
+    console.error("Error publishing report:", error);
+    res.status(500).json({ message: "Failed to publish report" });
+  }
+};
+
+// Get report versions
+exports.getReportVersions = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+
+    const project = await Project.findById(projectId);
+    if (!project) {
+      return res.status(404).json({ message: "Project not found" });
+    }
+
+    const versions = project.reportVersions || [];
+    res.status(200).json(versions);
+  } catch (error) {
+    console.error("Error fetching versions:", error);
+    res.status(500).json({ message: "Failed to fetch versions" });
+  }
+};
+
+// Get specific version
+exports.getReportVersion = async (req, res) => {
+  try {
+    const { projectId, versionId } = req.params;
+
+    const project = await Project.findById(projectId);
+    if (!project) {
+      return res.status(404).json({ message: "Project not found" });
+    }
+
+    const version = project.reportVersions.id(versionId);
+    if (!version) {
+      return res.status(404).json({ message: "Version not found" });
+    }
+
+    res.status(200).json(version);
+  } catch (error) {
+    console.error("Error fetching version:", error);
+    res.status(500).json({ message: "Failed to fetch version" });
+  }
+};
+
+// Upload report file
+exports.uploadReport = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const { content } = req.body;
+
+    const project = await Project.findById(projectId);
+    if (!project) {
+      return res.status(404).json({ message: "Project not found" });
+    }
+
+    if (!project.reportVersions) {
+      project.reportVersions = [];
+    }
+
+    project.reportVersions.push({
+      content,
+      createdAt: new Date(),
+      createdBy: req.user._id,
+      type: "upload",
+    });
+
+    project.finalReport = {
+      content,
+      lastModified: new Date(),
+      status: "draft",
+    };
+
+    await project.save();
+
+    res.status(200).json({
+      message: "Report uploaded successfully",
+      finalReport: project.finalReport,
+    });
+  } catch (error) {
+    console.error("Error uploading report:", error);
+    res.status(500).json({ message: "Failed to upload report" });
+  }
+};
