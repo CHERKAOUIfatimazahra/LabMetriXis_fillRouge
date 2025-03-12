@@ -1,215 +1,142 @@
-// const {
-//   getAvailableTeamMembers,
-//   getAvailableTechnicians,
-//   deleteMemberFromProject,
-// } = require("../controllers/userController");
-// const User = require("../models/User");
-// const Project = require("../models/Project");
+const request = require("supertest");
+const express = require("express");
+const bodyParser = require("body-parser");
+const userController = require("../controllers/userController");
+const User = require("../models/User");
+const Project = require("../models/Project");
+const mongoose = require("mongoose");
 
-// jest.mock("../models/User");
-// jest.mock("../models/Project");
+const authMiddleware = (req, res, next) => {
+  req.user = {
+    _id: "507f1f77bcf86cd799439011",
+    id: "507f1f77bcf86cd799439011",
+    name: "Test User",
+    email: "test@example.com",
+    role: "admin",
+  };
+  next();
+};
 
-// describe("Controller tests", () => {
-//   afterEach(() => {
-//     jest.clearAllMocks();
-//   });
+const app = express();
+app.use(bodyParser.json());
+app.use(authMiddleware);
 
-//   describe("getAvailableTeamMembers", () => {
-//     it("should return all chercheurs", async () => {
-//       const mockUsers = [
-//         { _id: "1", name: "User 1", role: "chercheur" },
-//         { _id: "2", name: "User 2", role: "chercheur" },
-//       ];
+app.get(
+  "/project/available-team-members",
+  userController.getAvailableTeamMembers
+);
+app.get(
+  "/project/available-technicians",
+  userController.getAvailableTechnicians
+);
+app.delete(
+  "/projects/:projectId/team-members/:userId",
+  userController.deleteMemberFromProject
+);
 
-//       // Mock the User.find method
-//       User.find.mockResolvedValue(mockUsers);
+describe("User Controller Tests", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
 
-//       const req = {};
-//       const res = {
-//         json: jest.fn(),
-//       };
+  describe("Get Available Team Members", () => {
+    it("should return all users with role 'chercheur'", async () => {
+      const mockChercheurs = [
+        {
+          _id: "507f1f77bcf86cd799439011",
+          name: "Researcher 1",
+          email: "researcher1@example.com",
+          role: "chercheur",
+        },
+        {
+          _id: "507f1f77bcf86cd799439012",
+          name: "Researcher 2",
+          email: "researcher2@example.com",
+          role: "chercheur",
+        },
+      ];
 
-//       await getAvailableTeamMembers(req, res);
+      jest.spyOn(User, "find").mockResolvedValue(mockChercheurs);
 
-//       expect(User.find).toHaveBeenCalledWith({ role: "chercheur" });
-//       expect(res.json).toHaveBeenCalledWith(mockUsers);
-//     });
+      const response = await request(app).get(
+        "/project/available-team-members"
+      );
 
-//     it("should handle errors", async () => {
-//       User.find.mockRejectedValue(new Error("Database error"));
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual(mockChercheurs);
+      expect(User.find).toHaveBeenCalledWith({ role: "chercheur" });
+    });
 
-//       const req = {};
-//       const res = {
-//         status: jest.fn().mockReturnThis(),
-//         json: jest.fn(),
-//       };
+    it("should return an empty array if no users with role 'chercheur' found", async () => {
+      jest.spyOn(User, "find").mockResolvedValue([]);
 
-//       await getAvailableTeamMembers(req, res);
+      const response = await request(app).get(
+        "/project/available-team-members"
+      );
 
-//       expect(res.status).toHaveBeenCalledWith(500);
-//       expect(res.json).toHaveBeenCalledWith({ error: "Database error" });
-//     });
-//   });
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual([]);
+      expect(User.find).toHaveBeenCalledWith({ role: "chercheur" });
+    });
 
-//   describe("getAvailableTechnicians", () => {
-//     it("should return all technicians", async () => {
-//       const mockUsers = [
-//         { _id: "1", name: "Tech 1", role: "technicien" },
-//         { _id: "2", name: "Tech 2", role: "technicien" },
-//       ];
+    it("should handle errors when fetching team members", async () => {
+      jest.spyOn(User, "find").mockRejectedValue(new Error("Database Error"));
 
-//       // Mock the User.find method
-//       User.find.mockResolvedValue(mockUsers);
+      const response = await request(app).get(
+        "/project/available-team-members"
+      );
 
-//       const req = {};
-//       const res = {
-//         json: jest.fn(),
-//       };
+      expect(response.status).toBe(500);
+      expect(response.body.error).toBe("Database Error");
+    });
+  });
 
-//       await getAvailableTechnicians(req, res);
+  describe("Get Available Technicians", () => {
+    it("should return all users with role 'technicien'", async () => {
+      const mockTechnicians = [
+        {
+          _id: "507f1f77bcf86cd799439013",
+          name: "Technician 1",
+          email: "technician1@example.com",
+          role: "technicien",
+        },
+        {
+          _id: "507f1f77bcf86cd799439014",
+          name: "Technician 2",
+          email: "technician2@example.com",
+          role: "technicien",
+        },
+      ];
 
-//       expect(User.find).toHaveBeenCalledWith({ role: "technicien" });
-//       expect(res.json).toHaveBeenCalledWith(mockUsers);
-//     });
+      jest.spyOn(User, "find").mockResolvedValue(mockTechnicians);
 
-//     it("should handle errors", async () => {
-//       User.find.mockRejectedValue(new Error("Database error"));
+      const response = await request(app).get("/project/available-technicians");
 
-//       const req = {};
-//       const res = {
-//         status: jest.fn().mockReturnThis(),
-//         json: jest.fn(),
-//       };
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual(mockTechnicians);
+      expect(User.find).toHaveBeenCalledWith({ role: "technicien" });
+    });
 
-//       await getAvailableTechnicians(req, res);
+    it("should return an empty array if no users with role 'technicien' found", async () => {
+      jest.spyOn(User, "find").mockResolvedValue([]);
 
-//       expect(res.status).toHaveBeenCalledWith(500);
-//       expect(res.json).toHaveBeenCalledWith({ error: "Database error" });
-//     });
-//   });
+      const response = await request(app).get("/project/available-technicians");
 
-//   describe("deleteMemberFromProject", () => {
-//     it("should remove a member from project", async () => {
-//       const mockProject = {
-//         _id: "projectId",
-//         teamMembers: [
-//           {
-//             user: { _id: "memberId" },
-//             name: "User 1",
-//             email: "user1@example.com",
-//           },
-//         ],
-//         teamLead: { _id: "teamLeadId", name: "Team Lead" },
-//       };
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual([]);
+      expect(User.find).toHaveBeenCalledWith({ role: "technicien" });
+    });
 
-//       Project.findById.mockResolvedValue(mockProject);
-//       Project.findById.mockResolvedValueOnce(mockProject); // Mock for the updated project
+    it("should handle errors when fetching technicians", async () => {
+      jest.spyOn(User, "find").mockRejectedValue(new Error("Database Error"));
 
-//       const req = {
-//         params: { projectId: "projectId", memberId: "memberId" },
-//         user: { _id: "teamLeadId" },
-//       };
-//       const res = {
-//         json: jest.fn(),
-//       };
+      const response = await request(app).get("/project/available-technicians");
 
-//       await deleteMemberFromProject(req, res);
+      expect(response.status).toBe(500);
+      expect(response.body.error).toBe("Database Error");
+    });
+  });
 
-//       expect(Project.findById).toHaveBeenCalledWith("projectId");
-//       expect(res.json).toHaveBeenCalledWith({
-//         message: "Team member removed successfully",
-//         project: mockProject,
-//       });
-//     });
+  // Tests for deleteMemberFromProject
 
-//     it("should return 404 if project is not found", async () => {
-//       Project.findById.mockResolvedValue(null);
-
-//       const req = {
-//         params: { projectId: "invalidProjectId", memberId: "memberId" },
-//         user: { _id: "teamLeadId" },
-//       };
-//       const res = {
-//         status: jest.fn().mockReturnThis(),
-//         json: jest.fn(),
-//       };
-
-//       await deleteMemberFromProject(req, res);
-
-//       expect(res.status).toHaveBeenCalledWith(404);
-//       expect(res.json).toHaveBeenCalledWith({ message: "Project not found" });
-//     });
-
-//     it("should return 403 if user is not the team lead", async () => {
-//       const mockProject = {
-//         _id: "projectId",
-//         teamMembers: [{ user: { _id: "memberId" } }],
-//         teamLead: { _id: "teamLeadId", name: "Team Lead" },
-//       };
-
-//       Project.findById.mockResolvedValue(mockProject);
-
-//       const req = {
-//         params: { projectId: "projectId", memberId: "memberId" },
-//         user: { _id: "differentUserId" },
-//       };
-//       const res = {
-//         status: jest.fn().mockReturnThis(),
-//         json: jest.fn(),
-//       };
-
-//       await deleteMemberFromProject(req, res);
-
-//       expect(res.status).toHaveBeenCalledWith(403);
-//       expect(res.json).toHaveBeenCalledWith({
-//         message: "Only team leader can remove members",
-//       });
-//     });
-
-//     it("should return 404 if team member is not found", async () => {
-//       const mockProject = {
-//         _id: "projectId",
-//         teamMembers: [{ user: { _id: "otherMemberId" } }],
-//         teamLead: { _id: "teamLeadId", name: "Team Lead" },
-//       };
-
-//       Project.findById.mockResolvedValue(mockProject);
-
-//       const req = {
-//         params: { projectId: "projectId", memberId: "nonExistingMemberId" },
-//         user: { _id: "teamLeadId" },
-//       };
-//       const res = {
-//         status: jest.fn().mockReturnThis(),
-//         json: jest.fn(),
-//       };
-
-//       await deleteMemberFromProject(req, res);
-
-//       expect(res.status).toHaveBeenCalledWith(404);
-//       expect(res.json).toHaveBeenCalledWith({
-//         message: "Team member not found",
-//       });
-//     });
-
-//     it("should handle errors", async () => {
-//       Project.findById.mockRejectedValue(new Error("Database error"));
-
-//       const req = {
-//         params: { projectId: "projectId", memberId: "memberId" },
-//         user: { _id: "teamLeadId" },
-//       };
-//       const res = {
-//         status: jest.fn().mockReturnThis(),
-//         json: jest.fn(),
-//       };
-
-//       await deleteMemberFromProject(req, res);
-
-//       expect(res.status).toHaveBeenCalledWith(500);
-//       expect(res.json).toHaveBeenCalledWith({
-//         message: "Internal server error",
-//       });
-//     });
-//   });
-// });
+});
