@@ -4,6 +4,12 @@ const User = require("../models/User");
 
 // Project Management Controllers
 exports.createProject = async (req, res) => {
+  // cheque if the project orady exists
+  const project = await Project.findOne({ name: req.body.name });
+  if (project) {
+    return res.status(400).json({ message: "Project already exists" });
+  }
+  // create a new project
   try {
     const {
       projectName,
@@ -62,6 +68,13 @@ exports.createProject = async (req, res) => {
 exports.addSampleToProject = async (req, res) => {
   try {
     const { projectId } = req.params;
+
+    // if (!projectId || !mongoose.Types.ObjectId.isValid(projectId)) {
+    //   return res.status(400).json({
+    //     error: "Invalid or missing project ID",
+    //     receivedId: projectId,
+    //   });
+    // }
 
     let sampleData = req.body;
     if (req.body.sampleData) {
