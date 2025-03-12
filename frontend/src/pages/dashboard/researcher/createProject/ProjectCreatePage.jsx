@@ -210,12 +210,14 @@ function ProjectCreatePage() {
           },
         }
       );
-
-      if (response.data && response.data.projectId) {
-        const projectId = response.data.projectId;
-        navigate(
-          `/dashboard/researcher/projects/create/add-sample/${projectId}`
-        );
+      
+      if (response.status === 201) {
+        // Redirect to project details page
+        const projectId = response.data.projectId;;
+        window.location.href = `/dashboard/researcher/projects/create/add-sample/${projectId}`;
+       
+      } else {
+        alert("Unexpected response from the server.");
       }
     } catch (error) {
       console.error("Error creating project:", error);
