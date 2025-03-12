@@ -18,6 +18,8 @@ function ProjectCreatePage() {
   const [selectedTeamMembers, setSelectedTeamMembers] = useState([]);
   const [availableUsers, setAvailableUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [errors, setErrors] = useState({});
+
   const [formData, setFormData] = useState({
     projectName: "",
     researchDomains: "",
@@ -65,6 +67,14 @@ function ProjectCreatePage() {
       ...formData,
       [name]: type === "checkbox" ? checked : value,
     });
+
+    // Clear error when field is edited
+    if (errors[name]) {
+      setErrors({
+        ...errors,
+        [name]: null,
+      });
+    }
   };
 
   // Handle adding team member
@@ -99,23 +109,95 @@ function ProjectCreatePage() {
     "Informatique",
   ];
 
+  // Validation function
+  const validateForm = () => {
+    let isValid = true;
+    let newErrors = {};
+
+    // Project name validation
+    if (!formData.projectName.trim()) {
+      newErrors.projectName = "Le titre du projet est requis";
+      isValid = false;
+    } else if (formData.projectName.trim().length < 5) {
+      newErrors.projectName = "Le titre doit comporter au moins 5 caractères";
+      isValid = false;
+    }
+
+    // Research domain validation
+    if (!formData.researchDomains) {
+      newErrors.researchDomains = "Le domaine de recherche est requis";
+      isValid = false;
+    }
+
+    // Budget validation
+    if (!formData.budget) {
+      newErrors.budget = "Le budget est requis";
+      isValid = false;
+    } else if (Number(formData.budget) <= 0) {
+      newErrors.budget = "Le budget doit être un nombre positif";
+      isValid = false;
+    }
+
+    // Date validations
+    if (!formData.startDate) {
+      newErrors.startDate = "La date de début est requise";
+      isValid = false;
+    }
+
+    if (!formData.deadline) {
+      newErrors.deadline = "La date de fin est requise";
+      isValid = false;
+    } else if (formData.startDate && formData.deadline) {
+      const start = new Date(formData.startDate);
+      const end = new Date(formData.deadline);
+
+      if (end <= start) {
+        newErrors.deadline =
+          "La date de fin doit être postérieure à la date de début";
+        isValid = false;
+      }
+    }
+
+    // Team lead validation
+    if (!formData.teamLead) {
+      newErrors.teamLead = "Un responsable de projet est requis";
+      isValid = false;
+    }
+
+    // Description validation
+    if (!formData.description.trim()) {
+      newErrors.description = "Le résumé du projet est requis";
+      isValid = false;
+    } else if (formData.description.trim().length < 20) {
+      newErrors.description =
+        "La description doit comporter au moins 20 caractères";
+      isValid = false;
+    }
+
+    setErrors(newErrors);
+    return isValid;
+  };
+
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Validate form
+    if (!validateForm()) {
+      window.scrollTo(0, 0); // Scroll to top to show errors
+      return;
+    }
+
     try {
       const token = localStorage.getItem("token");
 
-      // Format team members data for the API
-      const formattedTeamMembers = selectedTeamMembers.map((member) => ({
-        user: member._id,
-        role: member.role,
-      }));
+      // Extract just the user IDs from the selected team members
+      const teamMemberIds = selectedTeamMembers.map((member) => member._id);
 
       const finalFormData = {
         ...formData,
         teamLead: formData.teamLead,
-        teamMembers: formattedTeamMembers,
+        teamMembers: teamMemberIds,
       };
 
       const response = await axios.post(
@@ -129,8 +211,8 @@ function ProjectCreatePage() {
         }
       );
 
-      if (response.status === 201) {
-        const { project, projectId } = response.data;
+      if (response.data && response.data.projectId) {
+        const projectId = response.data.projectId;
         navigate(
           `/dashboard/researcher/projects/create/add-sample/${projectId}`
         );
@@ -209,6 +291,13 @@ function ProjectCreatePage() {
     },
   ];
 
+  // Error display component
+  const ErrorMessage = ({ message }) => {
+    return message ? (
+      <p className="text-red-500 text-sm mt-1">{message}</p>
+    ) : null;
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header Component */}
@@ -246,6 +335,15 @@ function ProjectCreatePage() {
                 </div>
               </div>
 
+              {/* Display general validation message if needed */}
+              {Object.keys(errors).length > 0 && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
+                  <p className="font-medium">
+                    Veuillez corriger les erreurs suivantes:
+                  </p>
+                </div>
+              )}
+
               <form onSubmit={handleSubmit} className="space-y-8">
                 {/* Informations de base du projet */}
                 <div>
@@ -266,9 +364,13 @@ function ProjectCreatePage() {
                         name="projectName"
                         value={formData.projectName}
                         onChange={handleChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
-                        required
+                        className={`w-full px-3 py-2 border ${
+                          errors.projectName
+                            ? "border-red-500"
+                            : "border-gray-300"
+                        } rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500`}
                       />
+                      <ErrorMessage message={errors.projectName} />
                     </div>
 
                     <div>
@@ -281,10 +383,13 @@ function ProjectCreatePage() {
                       <select
                         id="researchDomain"
                         name="researchDomains"
-                        value={formData.researchDomain}
+                        value={formData.researchDomains}
                         onChange={handleChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
-                        required
+                        className={`w-full px-3 py-2 border ${
+                          errors.researchDomains
+                            ? "border-red-500"
+                            : "border-gray-300"
+                        } rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500`}
                       >
                         <option value="">-- Choisissez un domaine --</option>
                         {researchDomains.map((domain) => (
@@ -293,6 +398,7 @@ function ProjectCreatePage() {
                           </option>
                         ))}
                       </select>
+                      <ErrorMessage message={errors.researchDomains} />
                     </div>
 
                     <div>
@@ -326,9 +432,11 @@ function ProjectCreatePage() {
                         name="budget"
                         value={formData.budget}
                         onChange={handleChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
-                        required
+                        className={`w-full px-3 py-2 border ${
+                          errors.budget ? "border-red-500" : "border-gray-300"
+                        } rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500`}
                       />
+                      <ErrorMessage message={errors.budget} />
                     </div>
 
                     <div>
@@ -344,9 +452,14 @@ function ProjectCreatePage() {
                         name="startDate"
                         value={formData.startDate}
                         onChange={handleChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
-                        required
+                        min={new Date().toISOString().split("T")[0]}
+                        className={`w-full px-3 py-2 border ${
+                          errors.startDate
+                            ? "border-red-500"
+                            : "border-gray-300"
+                        } rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500`}
                       />
+                      <ErrorMessage message={errors.startDate} />
                     </div>
 
                     <div>
@@ -362,9 +475,15 @@ function ProjectCreatePage() {
                         name="deadline"
                         value={formData.deadline}
                         onChange={handleChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
-                        required
+                        min={
+                          formData.startDate ||
+                          new Date().toISOString().split("T")[0]
+                        }
+                        className={`w-full px-3 py-2 border ${
+                          errors.deadline ? "border-red-500" : "border-gray-300"
+                        } rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500`}
                       />
+                      <ErrorMessage message={errors.deadline} />
                     </div>
                   </div>
 
@@ -381,10 +500,14 @@ function ProjectCreatePage() {
                       value={formData.description}
                       onChange={handleChange}
                       rows="4"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
-                      required
+                      className={`w-full px-3 py-2 border ${
+                        errors.description
+                          ? "border-red-500"
+                          : "border-gray-300"
+                      } rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500`}
                       placeholder="Décrivez brièvement les objectifs et la portée de ce projet de recherche..."
                     ></textarea>
+                    <ErrorMessage message={errors.description} />
                   </div>
 
                   <div className="mt-4">
@@ -423,8 +546,9 @@ function ProjectCreatePage() {
                       name="teamLead"
                       value={formData.teamLead}
                       onChange={handleChange}
-                      className="w-full md:w-80 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
-                      required
+                      className={`w-full md:w-80 px-3 py-2 border ${
+                        errors.teamLead ? "border-red-500" : "border-gray-300"
+                      } rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500`}
                     >
                       <option value="">Sélectionner un responsable</option>
                       {availableUsers
@@ -435,6 +559,7 @@ function ProjectCreatePage() {
                           </option>
                         ))}
                     </select>
+                    <ErrorMessage message={errors.teamLead} />
                   </div>
 
                   {/* Team Members Selection */}
