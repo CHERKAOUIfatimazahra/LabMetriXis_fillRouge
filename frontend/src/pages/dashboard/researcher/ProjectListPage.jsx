@@ -12,6 +12,8 @@ import {
   FaTrash,
   FaDollarSign,
   FaFlask,
+  FaChevronLeft,
+  FaChevronRight,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -27,10 +29,12 @@ function ProjectListPage() {
   const [filterStatus, setFilterStatus] = useState("All");
   const [projects, setProjects] = useState([]);
   const [statistics, setStatistics] = useState(null);
+
+  // Updated pagination state
   const [pagination, setPagination] = useState({
     currentPage: 1,
+    projectsPerPage: 8,
     totalPages: 1,
-    total: 0,
   });
 
   // Navigation items config
@@ -70,11 +74,16 @@ function ProjectListPage() {
   // Add the missing handleStatusFilter function
   const handleStatusFilter = (e) => {
     setFilterStatus(e.target.value);
+    setPagination((prev) => ({ ...prev, currentPage: 1 })); // Reset to page 1 when filtering
   };
 
   // Function to handle page change
   const handlePageChange = (newPage) => {
     setPagination((prev) => ({ ...prev, currentPage: newPage }));
+    // Scroll to top of the table
+    document
+      .querySelector(".projects-table-container")
+      ?.scrollIntoView({ behavior: "smooth" });
   };
 
   // Functions for status and progress colors
@@ -104,6 +113,7 @@ function ProjectListPage() {
   // Function for search
   const handleSearch = (e) => {
     setSearchTerm(e.target.value);
+    setPagination((prev) => ({ ...prev, currentPage: 1 })); // Reset to page 1 when searching
   };
 
   // Fetch projects
@@ -174,6 +184,29 @@ function ProjectListPage() {
 
     return matchesSearch && matchesStatus;
   });
+
+  // Update pagination when filtered projects change
+  useEffect(() => {
+    setPagination((prev) => ({
+      ...prev,
+      totalPages: Math.ceil(filteredProjects.length / prev.projectsPerPage),
+    }));
+  }, [filteredProjects]);
+
+  // Calculate current page projects (8 per page)
+  const indexOfLastProject =
+    pagination.currentPage * pagination.projectsPerPage;
+  const indexOfFirstProject = indexOfLastProject - pagination.projectsPerPage;
+  const currentProjects = filteredProjects.slice(
+    indexOfFirstProject,
+    indexOfLastProject
+  );
+
+  // Generate page numbers for pagination
+  const pageNumbers = [];
+  for (let i = 1; i <= pagination.totalPages; i++) {
+    pageNumbers.push(i);
+  }
 
   if (isLoading) {
     return (
@@ -299,7 +332,7 @@ function ProjectListPage() {
               </div>
 
               {/* Projects Table */}
-              <div className="overflow-x-auto bg-white rounded-lg shadow-sm border border-gray-100">
+              <div className="overflow-x-auto bg-white rounded-lg shadow-sm border border-gray-100 projects-table-container">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
@@ -324,8 +357,8 @@ function ProjectListPage() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredProjects.length > 0 ? (
-                      filteredProjects.map((project) => (
+                    {currentProjects.length > 0 ? (
+                      currentProjects.map((project) => (
                         <tr
                           key={project._id}
                           className="hover:bg-gray-50 transition-colors duration-150"
@@ -339,9 +372,7 @@ function ProjectListPage() {
                                 <div className="text-sm font-medium text-gray-900">
                                   {project.projectName}
                                 </div>
-                                <div className="text-xs text-gray-500 mt-1 max-w-xs">
-                                  {project.description}
-                                </div>
+
                                 <div className="text-xs text-teal-600 mt-1">
                                   Budget: $
                                   {project.budget?.toLocaleString() || "N/A"}
@@ -463,51 +494,132 @@ function ProjectListPage() {
                 </table>
               </div>
 
-              {/* Pagination */}
-              <div className="mt-6 flex justify-between items-center">
-                <div className="text-sm text-gray-700">
-                  Showing{" "}
-                  <span className="font-medium">
-                    {(pagination.currentPage - 1) * 10 + 1}
-                  </span>{" "}
-                  to{" "}
-                  <span className="font-medium">
-                    {Math.min(
-                      pagination.currentPage * 10,
-                      pagination.total || filteredProjects.length
-                    )}
-                  </span>{" "}
-                  of{" "}
-                  <span className="font-medium">
-                    {pagination.total || filteredProjects.length}
-                  </span>{" "}
-                  projects
+              {/* Improved Pagination */}
+              {filteredProjects.length > 0 && (
+                <div className="mt-6 flex flex-col sm:flex-row justify-between items-center">
+                  <div className="text-sm text-gray-700 mb-4 sm:mb-0">
+                    Showing{" "}
+                    <span className="font-medium">
+                      {indexOfFirstProject + 1}
+                    </span>{" "}
+                    to{" "}
+                    <span className="font-medium">
+                      {Math.min(indexOfLastProject, filteredProjects.length)}
+                    </span>{" "}
+                    of{" "}
+                    <span className="font-medium">
+                      {filteredProjects.length}
+                    </span>{" "}
+                    projects
+                  </div>
+
+                  <div className="flex items-center">
+                    {/* Pagination buttons with improved design */}
+                    <button
+                      onClick={() => handlePageChange(1)}
+                      disabled={pagination.currentPage === 1}
+                      className={`h-8 w-8 flex items-center justify-center rounded-l-md ${
+                        pagination.currentPage === 1
+                          ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                          : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                      }`}
+                    >
+                      <FaChevronLeft size={12} />
+                      <FaChevronLeft size={12} className="-ml-1" />
+                    </button>
+
+                    <button
+                      onClick={() =>
+                        handlePageChange(pagination.currentPage - 1)
+                      }
+                      disabled={pagination.currentPage === 1}
+                      className={`h-8 w-8 flex items-center justify-center ${
+                        pagination.currentPage === 1
+                          ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                          : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                      }`}
+                    >
+                      <FaChevronLeft size={12} />
+                    </button>
+
+                    {/* Dynamic page number buttons */}
+                    <div className="flex items-center">
+                      {pageNumbers.map((number) => {
+                        // Show limited page numbers with ellipsis
+                        if (
+                          number === 1 ||
+                          number === pagination.totalPages ||
+                          (number >= pagination.currentPage - 1 &&
+                            number <= pagination.currentPage + 1)
+                        ) {
+                          return (
+                            <button
+                              key={number}
+                              onClick={() => handlePageChange(number)}
+                              className={`h-8 w-8 flex items-center justify-center ${
+                                pagination.currentPage === number
+                                  ? "bg-teal-500 text-white"
+                                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                              }`}
+                            >
+                              {number}
+                            </button>
+                          );
+                        }
+
+                        // Add ellipsis where needed
+                        if (
+                          (number === 2 && pagination.currentPage > 3) ||
+                          (number === pagination.totalPages - 1 &&
+                            pagination.currentPage < pagination.totalPages - 2)
+                        ) {
+                          return (
+                            <span
+                              key={number}
+                              className="h-8 w-8 flex items-center justify-center bg-gray-100"
+                            >
+                              ...
+                            </span>
+                          );
+                        }
+
+                        return null;
+                      })}
+                    </div>
+
+                    <button
+                      onClick={() =>
+                        handlePageChange(pagination.currentPage + 1)
+                      }
+                      disabled={
+                        pagination.currentPage === pagination.totalPages
+                      }
+                      className={`h-8 w-8 flex items-center justify-center ${
+                        pagination.currentPage === pagination.totalPages
+                          ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                          : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                      }`}
+                    >
+                      <FaChevronRight size={12} />
+                    </button>
+
+                    <button
+                      onClick={() => handlePageChange(pagination.totalPages)}
+                      disabled={
+                        pagination.currentPage === pagination.totalPages
+                      }
+                      className={`h-8 w-8 flex items-center justify-center rounded-r-md ${
+                        pagination.currentPage === pagination.totalPages
+                          ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                          : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                      }`}
+                    >
+                      <FaChevronRight size={12} />
+                      <FaChevronRight size={12} className="-ml-1" />
+                    </button>
+                  </div>
                 </div>
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => handlePageChange(pagination.currentPage - 1)}
-                    disabled={pagination.currentPage === 1}
-                    className={`px-4 py-2 ${
-                      pagination.currentPage === 1
-                        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                        : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                    } rounded-md transition-colors duration-200`}
-                  >
-                    Previous
-                  </button>
-                  <button
-                    onClick={() => handlePageChange(pagination.currentPage + 1)}
-                    disabled={pagination.currentPage === pagination.totalPages}
-                    className={`px-4 py-2 ${
-                      pagination.currentPage === pagination.totalPages
-                        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                        : "bg-teal-500 text-white hover:bg-teal-600"
-                    } rounded-md transition-colors duration-200`}
-                  >
-                    Next
-                  </button>
-                </div>
-              </div>
+              )}
             </div>
           </main>
         </div>
