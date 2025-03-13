@@ -21,6 +21,8 @@ function ResearcherDashboard() {
   const [samples, setSamples] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [userName, setUserName] = useState("");
+  const [userInitials, setUserInitials] = useState("");
   const [stats, setStats] = useState({
     totalProjects: 0,
     activeProjects: 0,
@@ -30,7 +32,6 @@ function ResearcherDashboard() {
     inAnalysisSamples: 0,
   });
 
-  // Navigation items config - matching ProjectListPage
   const navItems = [
     {
       id: "overview",
@@ -64,7 +65,6 @@ function ResearcherDashboard() {
     },
   ];
 
-  // Status color function from ProjectListPage
   const getStatusColor = (status) => {
     switch (status) {
       case "Completed":
@@ -86,7 +86,6 @@ function ResearcherDashboard() {
     const loadData = async () => {
       setLoading(true);
       try {
-        // Using import.meta.env like in ProjectListPage
         const API_URL = `${import.meta.env.VITE_API_URL}/project`;
 
         const { data: projectsData } = await axios.get(`${API_URL}/projects`, {
@@ -94,7 +93,6 @@ function ResearcherDashboard() {
         });
         setProjects(projectsData);
 
-        // Sort projects by start date (newest first) and take only the 5 most recent
         const sortedProjects = [...projectsData].sort(
           (a, b) => new Date(b.startDate || 0) - new Date(a.startDate || 0)
         );
@@ -136,6 +134,28 @@ function ResearcherDashboard() {
       }
     };
     loadData();
+  }, []);
+
+  useEffect(() => {
+    const userData = localStorage.getItem("user");
+
+    if (userData) {
+      try {
+        const user = JSON.parse(userData);
+        const fullName = user.name || "Utilisateur";
+        setUserName(fullName);
+
+        // Générer les initiales
+        const initials = fullName
+          .split(" ")
+          .map((n) => n[0])
+          .join("")
+          .toUpperCase();
+        setUserInitials(initials);
+      } catch (error) {
+        console.error("Erreur lors du parsing des données utilisateur:", error);
+      }
+    }
   }, []);
 
   const formatDate = (dateString) =>
@@ -204,7 +224,7 @@ function ResearcherDashboard() {
             {/* Welcome Section */}
             <div className="mb-6 bg-gradient-to-r from-teal-600 to-teal-700 rounded-xl shadow-xl text-white p-6">
               <h1 className="text-3xl font-bold mb-2">
-                Welcome back, Dr. Roberts
+                Welcome back, {userName}
               </h1>
               <p className="text-teal-100">
                 You have {stats.activeProjects} active projects and{" "}
