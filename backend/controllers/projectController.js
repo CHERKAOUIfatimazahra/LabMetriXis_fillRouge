@@ -485,3 +485,17 @@ exports.uploadReport = async (req, res) => {
     res.status(500).json({ message: "Failed to upload report" });
   }
 };
+
+// get sample by id
+exports.getSampleById = async (req, res) => {
+  try {
+    const { sampleId } = req.params;
+    const sample = await Sample.findById(sampleId);
+    if (!sample) {
+      return res.status(404).json({ message: "Sample not found" });
+    }
+    res.status(200).json(sample);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
