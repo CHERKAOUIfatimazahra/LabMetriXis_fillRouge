@@ -1,11 +1,11 @@
 const express = require("express");
 const connectDB = require("./config/db");
 const dotenv = require("dotenv");
+const path = require("path");
 const authRoutes = require("./routes/auth/authRoutes");
 const projectRoutes = require("./routes/project/projectRoutes");
 const statisticsRoutes = require("./routes/project/statisticsRoutes");
 const contactusRoutes = require("./routes/contactRoute");
-
 const cors = require("cors");
 
 const app = express();
@@ -16,12 +16,15 @@ app.use(
   cors({
     origin: "http://localhost:5173",
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
-    credentials: true, 
+    credentials: true,
   })
 );
 
 // Middleware pour traiter les requêtes JSON
 app.use(express.json());
+
+// Middleware pour servir les fichiers du dossier 'uploads'
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Routes
 app.use("/auth", authRoutes);
