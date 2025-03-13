@@ -11,6 +11,11 @@ import {
   FaUpload,
   FaVial,
   FaExclamationTriangle,
+  FaCheckCircle,
+  FaFilePdf,
+  FaFileWord,
+  FaFileExcel,
+  FaInfo,
 } from "react-icons/fa";
 import axios from "axios";
 
@@ -49,6 +54,13 @@ function AddSample() {
     "pieces",
   ]);
 
+  // Alert state
+  const [alert, setAlert] = useState({
+    show: false,
+    message: "",
+    type: "", // success, error, warning
+  });
+
   // Form validation errors state
   const [errors, setErrors] = useState({});
 
@@ -76,7 +88,6 @@ function AddSample() {
   const validateSample = (sample) => {
     const newErrors = {};
 
-    // Required fields validation
     if (!sample.name || sample.name.trim() === "") {
       newErrors.name = "Le nom de l'échantillon est requis";
     }
@@ -107,6 +118,10 @@ function AddSample() {
       newErrors.collectionDate = "La date de collecte est requise";
     }
 
+    if (!sample.protocolFile) {
+      newErrors.protocolFile = "Un fichier de protocole est requis";
+    }
+
     // Date validation
     if (sample.collectionDate && sample.expirationDate) {
       const collectionDate = new Date(sample.collectionDate);
@@ -134,6 +149,14 @@ function AddSample() {
         },
       });
       setProtocolFile(files[0]);
+
+      // Clear protocol file error if a file is selected
+      if (files[0] && errors.protocolFile) {
+        setErrors({
+          ...errors,
+          protocolFile: null,
+        });
+      }
     } else {
       setFormData({
         ...formData,
@@ -143,7 +166,6 @@ function AddSample() {
         },
       });
 
-      // Clear error for this field when user types
       if (errors[name]) {
         setErrors({
           ...errors,
@@ -153,28 +175,36 @@ function AddSample() {
     }
   };
 
-  // Handle adding a new sample
   const handleAddSample = () => {
-    // Validate the current sample
     const validationErrors = validateSample(formData.currentSample);
 
-    // If there are errors, display them and stop the process
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
+
+      // Show error alert
+      setAlert({
+        show: true,
+        message: "Veuillez corriger les erreurs avant d'ajouter l'échantillon",
+        type: "error",
+      });
+
+      // Automatically hide alert after 5 seconds
+      setTimeout(() => {
+        setAlert({ show: false, message: "", type: "" });
+      }, 5000);
+
       return;
     }
 
-    // If no errors, add the sample and reset the form
     setFormData({
       ...formData,
       samples: [
         ...formData.samples,
         {
           ...formData.currentSample,
-          id: Date.now(), // generate a temporary unique ID
+          id: Date.now(),
         },
       ],
-      // Reset current sample form
       currentSample: {
         name: "",
         description: "",
@@ -190,21 +220,41 @@ function AddSample() {
       },
     });
 
-    // Reset errors
+    // Show success alert for adding a sample
+    setAlert({
+      show: true,
+      message: "Échantillon ajouté avec succès à la liste",
+      type: "success",
+    });
+
+    // Automatically hide alert after 5 seconds
+    setTimeout(() => {
+      setAlert({ show: false, message: "", type: "" });
+    }, 5000);
+
     setErrors({});
-    // Reset protocol file state
     setProtocolFile(null);
   };
 
-  // Handle removing a sample
   const handleRemoveSample = (sampleId) => {
     setFormData({
       ...formData,
       samples: formData.samples.filter((sample) => sample.id !== sampleId),
     });
+
+    // Show info alert
+    setAlert({
+      show: true,
+      message: "Échantillon retiré de la liste",
+      type: "info",
+    });
+
+    // Automatically hide alert after 5 seconds
+    setTimeout(() => {
+      setAlert({ show: false, message: "", type: "" });
+    }, 5000);
   };
 
-  // Fetch project data and team members
   useEffect(() => {
     const fetchProject = async () => {
       try {
@@ -227,7 +277,7 @@ function AddSample() {
       try {
         const token = localStorage.getItem("token");
         const response = await axios.get(
-          `${import.meta.env.VITE_API_URL}/users`,
+          `${import.meta.env.VITE_API_URL}/project/available-technicians`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -246,7 +296,6 @@ function AddSample() {
     }
   }, [projectId]);
 
-  // get user id of the technicianResponsible from database
   useEffect(() => {
     const fetchTeamMembers = async () => {
       try {
@@ -259,7 +308,7 @@ function AddSample() {
             },
           }
         );
-        console.log(response.data);
+        // console.log(response.data);
         setAvailableTeamMembers(response.data || []);
       } catch (error) {
         console.error("Error fetching team members:", error);
@@ -268,12 +317,33 @@ function AddSample() {
     fetchTeamMembers();
   }, []);
 
-  // Update handleSubmit to send samples to the backend
+  const getFileIcon = (fileName) => {
+    if (!fileName) return <FaUpload />;
+
+    const extension = fileName.split(".").pop().toLowerCase();
+
+    if (["pdf"].includes(extension)) return <FaFilePdf />;
+    if (["doc", "docx"].includes(extension)) return <FaFileWord />;
+    if (["xls", "xlsx"].includes(extension)) return <FaFileExcel />;
+
+    return <FaFileAlt />;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (formData.samples.length === 0) {
-      alert("Veuillez ajouter au moins un échantillon");
+      setAlert({
+        show: true,
+        message: "Veuillez ajouter au moins un échantillon",
+        type: "warning",
+      });
+
+      // Automatically hide alert after 5 seconds
+      setTimeout(() => {
+        setAlert({ show: false, message: "", type: "" });
+      }, 5000);
+
       return;
     }
 
@@ -281,7 +351,6 @@ function AddSample() {
       const token = localStorage.getItem("token");
 
       const samplePromises = formData.samples.map(async (sample) => {
-        // Create a regular JSON object instead of FormData
         const sampleData = {
           name: sample.name,
           description: sample.description,
@@ -293,17 +362,14 @@ function AddSample() {
           technicianResponsible: sample.technicianResponsible,
           status: sample.status,
           identification: `${sample.type}-${Date.now()}`,
-          project: projectId, // Add this line to explicitly include the projectId
+          project: projectId,
         };
 
-        // Add optional fields only if they exist
         if (sample.expirationDate) {
           sampleData.expirationDate = sample.expirationDate;
         }
 
-        // If you need to handle file uploads, you'll still need FormData
         if (sample.protocolFile) {
-          // Create FormData for file upload
           const fileData = new FormData();
           fileData.append("protocolFile", sample.protocolFile);
           fileData.append("sampleData", JSON.stringify(sampleData));
@@ -321,7 +387,6 @@ function AddSample() {
             }
           );
         } else {
-          // For samples without files, send JSON directly
           return axios.post(
             `${
               import.meta.env.VITE_API_URL
@@ -338,11 +403,31 @@ function AddSample() {
       });
 
       await Promise.all(samplePromises);
-      console.log("Samples added successfully!");
-      navigate(`/dashboard/researcher/projects`);
+
+      // Show success alert and navigate after a delay
+      setAlert({
+        show: true,
+        message: "Échantillons ajoutés avec succès au projet!",
+        type: "success",
+      });
+
+      // Navigate after 2 seconds to give user time to see the success message
+      setTimeout(() => {
+        navigate(`/dashboard/researcher/projects`);
+      }, 2000);
     } catch (error) {
       console.error("Error adding samples:", error);
-      alert("Échec lors de l'ajout des échantillons. Veuillez réessayer.");
+
+      setAlert({
+        show: true,
+        message: "Échec lors de l'ajout des échantillons. Veuillez réessayer.",
+        type: "error",
+      });
+
+      // Automatically hide alert after 5 seconds
+      setTimeout(() => {
+        setAlert({ show: false, message: "", type: "" });
+      }, 5000);
     }
   };
 
@@ -380,36 +465,48 @@ function AddSample() {
     },
   ];
 
-  // Quick stats config
-  const quickStats = [
-    {
-      id: 1,
-      label: "Projets actifs",
-      value: "8",
-      color: "teal",
-    },
-    {
-      id: 2,
-      label: "Échantillons",
-      value: "126",
-      color: "indigo",
-    },
-    {
-      id: 3,
-      label: "Publications",
-      value: "12",
-      color: "green",
-    },
-    {
-      id: 4,
-      label: "Analyses en attente",
-      value: "7",
-      color: "purple",
-    },
-  ];
+  // Alert component
+  const AlertComponent = ({ show, message, type }) => {
+    if (!show) return null;
+
+    const alertStyles = {
+      success: "bg-green-100 border-green-500 text-green-700",
+      error: "bg-red-100 border-red-500 text-red-700",
+      warning: "bg-yellow-100 border-yellow-500 text-yellow-700",
+      info: "bg-blue-100 border-blue-500 text-blue-700",
+    };
+
+    const alertIcons = {
+      success: <FaCheckCircle className="h-5 w-5 text-green-500" />,
+      error: <FaExclamationTriangle className="h-5 w-5 text-red-500" />,
+      warning: <FaExclamationTriangle className="h-5 w-5 text-yellow-500" />,
+      info: <FaInfo className="h-5 w-5 text-blue-500" />,
+    };
+
+    return (
+      <div
+        className={`fixed top-4 right-4 z-50 p-4 rounded-lg border shadow-lg flex items-center ${alertStyles[type]}`}
+      >
+        <div className="mr-3">{alertIcons[type]}</div>
+        <div className="text-sm font-medium">{message}</div>
+        <button
+          onClick={() => setAlert({ show: false, message: "", type: "" })}
+          className="ml-4 text-gray-500 hover:text-gray-800 focus:outline-none"
+        >
+          ×
+        </button>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Alert Component */}
+      <AlertComponent
+        show={alert.show}
+        message={alert.message}
+        type={alert.type}
+      />
       {/* Header Component */}
       <Header
         title="LabMetriXis - Recherche Scientifique"
@@ -427,7 +524,6 @@ function AddSample() {
             activeTab={activeTab}
             setActiveTab={setActiveTab}
             navItems={navItems}
-            quickStats={quickStats}
             accentColor="teal"
           />
 
