@@ -30,14 +30,12 @@ function ProjectListPage() {
   const [projects, setProjects] = useState([]);
   const [statistics, setStatistics] = useState(null);
 
-  // Updated pagination state
   const [pagination, setPagination] = useState({
     currentPage: 1,
     projectsPerPage: 8,
     totalPages: 1,
   });
 
-  // Navigation items config
   const navItems = [
     {
       id: "overview",
@@ -71,22 +69,18 @@ function ProjectListPage() {
     },
   ];
 
-  // Add the missing handleStatusFilter function
   const handleStatusFilter = (e) => {
     setFilterStatus(e.target.value);
-    setPagination((prev) => ({ ...prev, currentPage: 1 })); // Reset to page 1 when filtering
+    setPagination((prev) => ({ ...prev, currentPage: 1 }));
   };
 
-  // Function to handle page change
   const handlePageChange = (newPage) => {
     setPagination((prev) => ({ ...prev, currentPage: newPage }));
-    // Scroll to top of the table
     document
       .querySelector(".projects-table-container")
       ?.scrollIntoView({ behavior: "smooth" });
   };
 
-  // Functions for status and progress colors
   const getStatusColor = (status) => {
     switch (status) {
       case "Completed":
@@ -110,17 +104,15 @@ function ProjectListPage() {
     return "bg-yellow-500";
   };
 
-  // Function for search
   const handleSearch = (e) => {
     setSearchTerm(e.target.value);
-    setPagination((prev) => ({ ...prev, currentPage: 1 })); // Reset to page 1 when searching
+    setPagination((prev) => ({ ...prev, currentPage: 1 }));
   };
 
   // Fetch projects
   useEffect(() => {
     const fetchProjects = async () => {
       try {
-        // Correct URL format for Vite
         const response = await axios.get(
           `${import.meta.env.VITE_API_URL}/project/projects`,
           {
@@ -130,9 +122,8 @@ function ProjectListPage() {
           }
         );
 
-        console.log(response.data);
+        // console.log(response.data);
 
-        // Verify response contains array of projects
         if (Array.isArray(response.data)) {
           setProjects(response.data);
         } else if (response.data.projects) {
@@ -151,7 +142,7 @@ function ProjectListPage() {
     fetchProjects();
   }, []);
 
-  // Fetch statistics - moved up before any conditional returns
+  // Fetch statistics
   useEffect(() => {
     const fetchStatistics = async () => {
       try {
@@ -187,10 +178,14 @@ function ProjectListPage() {
 
   // Update pagination when filtered projects change
   useEffect(() => {
-    setPagination((prev) => ({
-      ...prev,
-      totalPages: Math.ceil(filteredProjects.length / prev.projectsPerPage),
-    }));
+    setPagination((prev) => {
+      const newTotalPages = Math.ceil(
+        filteredProjects.length / prev.projectsPerPage
+      );
+      return prev.totalPages !== newTotalPages
+        ? { ...prev, totalPages: newTotalPages }
+        : prev;
+    });
   }, [filteredProjects]);
 
   // Calculate current page projects (8 per page)
@@ -514,7 +509,7 @@ function ProjectListPage() {
                   </div>
 
                   <div className="flex items-center">
-                    {/* Pagination buttons with improved design */}
+                    {/* Pagination buttons */}
                     <button
                       onClick={() => handlePageChange(1)}
                       disabled={pagination.currentPage === 1}
@@ -545,7 +540,6 @@ function ProjectListPage() {
                     {/* Dynamic page number buttons */}
                     <div className="flex items-center">
                       {pageNumbers.map((number) => {
-                        // Show limited page numbers with ellipsis
                         if (
                           number === 1 ||
                           number === pagination.totalPages ||
@@ -567,7 +561,6 @@ function ProjectListPage() {
                           );
                         }
 
-                        // Add ellipsis where needed
                         if (
                           (number === 2 && pagination.currentPage > 3) ||
                           (number === pagination.totalPages - 1 &&
