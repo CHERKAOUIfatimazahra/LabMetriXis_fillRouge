@@ -184,7 +184,7 @@ function ProjectCreatePage() {
 
     // Validate form
     if (!validateForm()) {
-      window.scrollTo(0, 0); // Scroll to top to show errors
+      window.scrollTo(0, 0);
       return;
     }
 
@@ -265,34 +265,6 @@ function ProjectCreatePage() {
     },
   ];
 
-  // Quick stats config
-  const quickStats = [
-    {
-      id: 1,
-      label: "Projets actifs",
-      value: "8",
-      color: "teal",
-    },
-    {
-      id: 2,
-      label: "Échantillons",
-      value: "126",
-      color: "indigo",
-    },
-    {
-      id: 3,
-      label: "Publications",
-      value: "12",
-      color: "green",
-    },
-    {
-      id: 4,
-      label: "Analyses en attente",
-      value: "7",
-      color: "purple",
-    },
-  ];
-
   // Error display component
   const ErrorMessage = ({ message }) => {
     return message ? (
@@ -319,7 +291,6 @@ function ProjectCreatePage() {
             activeTab={activeTab}
             setActiveTab={setActiveTab}
             navItems={navItems}
-            quickStats={quickStats}
             accentColor="teal"
           />
 
