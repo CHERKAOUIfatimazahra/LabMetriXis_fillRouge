@@ -135,4 +135,9 @@ router.post(
   projectController.uploadReport
 );
 
+// get sample by id
+router.get("/projects/:sampleId",
+  verifyToken,
+  projectController.getSampleById);
+
 module.exports = router;
