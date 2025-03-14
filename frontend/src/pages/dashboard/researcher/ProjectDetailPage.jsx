@@ -644,7 +644,7 @@ function ProjectDetailPage() {
                                   rel="noopener noreferrer"
                                   className="text-blue-600 hover:underline"
                                 >
-                                  {sample.protocolFile.fileName}
+                                  Dawnload
                                 </a>
                               ) : (
                                 "Aucun fichier"
@@ -678,6 +678,18 @@ function ProjectDetailPage() {
                                   <FaFileDownload />
                                 </button>
                               )}
+                              {/* update button */}
+                              <button
+                                onClick={() =>
+                                  navigate(
+                                    `/dashboard/researcher/projects/${projectId}/samples/${sample._id}/edit`
+                                  )
+                                }
+                                className="text-teal-600 hover:bg-teal-50 p-2 rounded-full"
+                                title="Mettre à jour le sample"
+                              >
+                                <FaEdit />
+                              </button>
                               <button
                                 onClick={() => confirmSampleDelete(sample._id)}
                                 className="text-red-500 hover:bg-red-50 p-2 rounded-full"
