@@ -18,11 +18,12 @@ import {
   FaExclamationTriangle,
   FaPlus,
   FaTrash,
+  FaEye,
+  FaUpload,
 } from "react-icons/fa";
 import Header from "../../../components/dashboard/Header";
 import Sidebar from "../../../components/dashboard/Sidebar";
 import { toast } from "react-toastify";
-import { jsPDF } from "jspdf";
 
 function ProjectDetailPage() {
   const { projectId } = useParams();
@@ -118,6 +119,13 @@ function ProjectDetailPage() {
   const confirmSampleDelete = (sampleId) => {
     setSelectedSampleId(sampleId);
     setShowSampleAlert(true);
+  };
+
+  // Function to navigate to upload report page
+  const navigateToUploadReport = (sampleId) => {
+    navigate(
+      `/dashboard/researcher/projects/${projectId}/samples/${sampleId}/upload-report`
+    );
   };
 
   // Function to handle team member deletion
@@ -359,7 +367,6 @@ function ProjectDetailPage() {
                       <FaFileAlt className="mr-2" />
                       Créer un rapport
                     </button>
-                    
                   </div>
 
                   <button
@@ -609,7 +616,16 @@ function ProjectDetailPage() {
                           <tr key={index} className="hover:bg-gray-50">
                             <td className="px-3 py-2 whitespace-nowrap">
                               <div className="text-sm font-medium text-gray-900">
-                                {sample.name}
+                                <button
+                                  onClick={() =>
+                                    navigate(
+                                      `/dashboard/researcher/projects/samples/${sample._id}`
+                                    )
+                                  } // Navigate to sample details page
+                                  className="text-blue-600 hover:underline"
+                                >
+                                  {sample.name}
+                                </button>
                               </div>
                               <div className="text-xs text-gray-500">
                                 ID: {sample.identification}
@@ -649,6 +665,19 @@ function ProjectDetailPage() {
                               </span>
                             </td>
                             <td className="px-3 py-2 whitespace-nowrap">
+                              {sample.status === "Analyzed" && (
+                                <button
+                                  onClick={() =>
+                                    navigate(
+                                      `/dashboard/researcher/projects/${projectId}/samples/${sample._id}/upload-report`
+                                    )
+                                  }
+                                  className="text-teal-600 hover:bg-teal-50 p-2 rounded-full"
+                                  title="Télécharger le rapport"
+                                >
+                                  <FaFileDownload />
+                                </button>
+                              )}
                               <button
                                 onClick={() => confirmSampleDelete(sample._id)}
                                 className="text-red-500 hover:bg-red-50 p-2 rounded-full"
