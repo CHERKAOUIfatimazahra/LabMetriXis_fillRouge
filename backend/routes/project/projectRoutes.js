@@ -136,7 +136,7 @@ router.post(
 );
 
 // get sample by id
-router.get("/projects/:sampleId",
+router.get("/projects/samples/:sampleId",
   verifyToken,
   projectController.getSampleById);
 
