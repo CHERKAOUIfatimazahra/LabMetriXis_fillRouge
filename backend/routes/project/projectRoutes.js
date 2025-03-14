@@ -140,4 +140,10 @@ router.get("/projects/samples/:sampleId",
   verifyToken,
   projectController.getSampleById);
 
+// update sample by id
+router.put("/projects/samples/:sampleId",
+  verifyToken,upload.single('protocolFile'),
+  projectController.updateSample);
+
+
 module.exports = router;
