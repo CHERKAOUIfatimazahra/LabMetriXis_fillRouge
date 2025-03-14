@@ -1,6 +1,8 @@
 const Project = require("../models/Project");
 const Sample = require("../models/Sample");
 const User = require("../models/User");
+const fs = require("fs");
+const path = require("path");
 
 // Project Management Controllers
 exports.createProject = async (req, res) => {
@@ -496,6 +498,73 @@ exports.getSampleById = async (req, res) => {
     }
     res.status(200).json(sample);
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// update sample
+exports.updateSample = async (req, res) => {
+  try {
+    const { sampleId } = req.params;
+
+    // Vérifier si l'ID est valide
+    if (!sampleId) {
+      return res.status(400).json({ error: "Invalid sample ID" });
+    }
+
+    // Récupérer l'échantillon et peupler le champ technicianResponsible avec les informations du technicien
+    const sample = await Sample.findById(sampleId)
+      .populate("technicianResponsible", "name email institution")
+      .exec();
+
+    if (!sample) {
+      return res.status(404).json({ error: "Sample not found" });
+    }
+
+    // Récupérer les nouvelles données
+    let updatedData = req.body;
+    if (req.body.sampleData) {
+      updatedData = JSON.parse(req.body.sampleData);
+    }
+
+    // Mettre à jour les champs fournis
+    Object.keys(updatedData).forEach((key) => {
+      if (updatedData[key] !== undefined) {
+        sample[key] = updatedData[key];
+      }
+    });
+
+    // Gestion de l'upload du fichier (si un nouveau fichier est fourni)
+    if (req.file) {
+      // Si un fichier existait déjà, supprimer l'ancien fichier
+      if (sample.protocolFile) {
+        const oldFilePath = path.join(
+          __dirname,
+          "../uploads",
+          sample.protocolFile.fileLocation
+        );
+      }
+
+      // Générer un nouveau nom de fichier unique
+      const newFileName = `${Date.now()}-${req.file.originalname}`;
+
+      // Mettre à jour le fichier avec le nouveau
+      sample.protocolFile = {
+        fileName: newFileName, // Nouveau nom unique
+        fileLocation: path.join("uploads", newFileName),
+        fileType: req.file.mimetype,
+      };
+    }
+
+    // Sauvegarder les modifications
+    await sample.save();
+
+    res.status(200).json({
+      message: "Sample updated successfully",
+      sample,
+    });
+  } catch (error) {
+    console.error("Error updating sample:", error);
     res.status(500).json({ error: error.message });
   }
 };
