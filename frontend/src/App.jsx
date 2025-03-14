@@ -27,6 +27,7 @@ import UpdateSample from "./pages/dashboard/researcher/updateProject/UpdateSampl
 
 // dashboard technicien
 import TechnicianDashboard from "./pages/dashboard/technicien/TechnicianDashboard";
+import SamplesListe from "./pages/dashboard/technicien/SamplesListe";
 
 // Pages publiques
 import HomePage from "./pages/HomePage";
@@ -176,6 +177,14 @@ function App() {
           element={
             <PrivateRoute allowedRoles={["technicien", "admin"]}>
               <TechnicianDashboard />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/dashboard/technician/samples"
+          element={
+            <PrivateRoute allowedRoles={["technicien", "admin"]}>
+              <SamplesListe />
             </PrivateRoute>
           }
         />
