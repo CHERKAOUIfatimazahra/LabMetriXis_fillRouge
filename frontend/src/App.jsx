@@ -22,6 +22,7 @@ import ProjectListPage from "./pages/dashboard/researcher/ProjectListPage";
 import ProjectDetailPage from "./pages/dashboard/researcher/ProjectDetailPage";
 import CreatePublicationPage from "./pages/dashboard/researcher/CreatePublicationPage";
 import UpdateProjectPage from "./pages/dashboard/researcher/updateProject/UpdateProjectPage";
+import SampleDetailsPage from "./pages/dashboard/researcher/SampleDetailsPage";
 
 // dashboard technicien
 import TechnicianDashboard from "./pages/dashboard/technicien/TechnicianDashboard";
@@ -146,6 +147,15 @@ function App() {
           element={
             <PrivateRoute allowedRoles={["chercheur", "admin"]}>
               <UpdateProjectPage />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/dashboard/researcher/projects/samples/:sampleId"
+          element={
+            <PrivateRoute allowedRoles={["chercheur", "admin"]}>
+              <SampleDetailsPage />
             </PrivateRoute>
           }
         />
