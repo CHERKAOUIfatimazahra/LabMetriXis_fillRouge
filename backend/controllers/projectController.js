@@ -3,16 +3,20 @@ const Sample = require("../models/Sample");
 const User = require("../models/User");
 const fs = require("fs");
 const path = require("path");
+const {
+  createNotification,
+  createNotificationForUsers,
+} = require("../controllers/NotificationsController");
 
-// Project Management Controllers
 exports.createProject = async (req, res) => {
-  // cheque if the project orady exists
-  const project = await Project.findOne({ projectName: req.body.name });
-  if (project) {
-    return res.status(400).json({ message: "Project already exists" });
-  }
-  // create a new project
   try {
+    const projectExists = await Project.findOne({
+      projectName: req.body.projectName,
+    });
+    if (projectExists) {
+      return res.status(400).json({ message: "Project already exists" });
+    }
+
     const {
       projectName,
       researchDomains,
@@ -57,6 +61,30 @@ exports.createProject = async (req, res) => {
 
     await project.save();
 
+    // Création de notification pour le créateur
+    await createNotification(
+      req.user._id,
+      `Nouveau projet créé: ${projectName}`,
+      project._id,
+      null
+    );
+
+    // Notification pour le teamLead et les membres (s'ils sont différents du créateur)
+    const usersToNotify = [teamLead, ...teamMembers].filter(
+      (userId) => userId.toString() !== req.user._id.toString()
+    );
+
+    if (usersToNotify.length > 0) {
+      await createNotificationForUsers(
+        usersToNotify,
+        `Vous avez été ajouté au projet: ${projectName}`,
+        project._id,
+        null,
+        "Info",
+        "Nouveau projet"
+      );
+    }
+
     res.status(201).json({
       message: "Project created successfully",
       projectId: project._id,
@@ -72,12 +100,15 @@ exports.addSampleToProject = async (req, res) => {
   try {
     const { projectId } = req.params;
 
-    // if (!projectId || !mongoose.Types.ObjectId.isValid(projectId)) {
-    //   return res.status(400).json({
-    //     error: "Invalid or missing project ID",
-    //     receivedId: projectId,
-    //   });
-    // }
+    if (!projectId) {
+      return res.status(400).json({ error: "Invalid or missing project ID" });
+    }
+
+    // Récupérer le projet
+    const project = await Project.findById(projectId);
+    if (!project) {
+      return res.status(404).json({ error: "Project not found" });
+    }
 
     let sampleData = req.body;
     if (req.body.sampleData) {
@@ -110,6 +141,40 @@ exports.addSampleToProject = async (req, res) => {
 
     await sample.save();
 
+    // Création de notification pour l'utilisateur qui ajoute l'échantillon
+    await createNotification(
+      req.user._id,
+      `Nouvel échantillon ajouté: ${sample.name}`,
+      projectId,
+      sample._id
+    );
+
+    // Notifications pour l'équipe du projet
+    const teamUsers = [project.teamLead, ...project.teamMembers].filter(
+      (userId) => userId && userId.toString() !== req.user._id.toString()
+    );
+
+    // Notification spéciale pour le technicien responsable s'il est différent de l'utilisateur actuel
+    if (
+      sample.technicianResponsible &&
+      sample.technicianResponsible.toString() !== req.user._id.toString() &&
+      !teamUsers.includes(sample.technicianResponsible.toString())
+    ) {
+      teamUsers.push(sample.technicianResponsible);
+    }
+
+    if (teamUsers.length > 0) {
+      await createNotificationForUsers(
+        teamUsers,
+        `Nouvel échantillon ajouté au projet: ${sample.name}`,
+        projectId,
+        sample._id,
+        "Info",
+        "Nouvel échantillon"
+      );
+    }
+
+    // Mettre à jour le projet
     await Project.findByIdAndUpdate(projectId, {
       $push: { samples: sample._id },
     });
@@ -568,3 +633,5 @@ exports.updateSample = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+
