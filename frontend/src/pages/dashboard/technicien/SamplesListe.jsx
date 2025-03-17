@@ -411,7 +411,7 @@ function SamplesList() {
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                             {formatDate(sample.collectionDate)}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                             <button
                               onClick={() => viewSampleDetails(sample._id)}
                               className="text-indigo-600 hover:text-indigo-900 mr-4"
@@ -554,17 +554,6 @@ function SamplesList() {
                   </div>
                 </div>
               )}
-            </div>
-
-            {/* Add Sample Button */}
-            <div className="fixed bottom-8 right-8">
-              <button
-                onClick={() => navigate("/dashboard/technician/samples/add")}
-                className="bg-indigo-600 text-white p-4 rounded-full shadow-lg hover:bg-indigo-700 transition-colors duration-200 flex items-center justify-center"
-                title="Add New Sample"
-              >
-                <FaPlus className="text-xl" />
-              </button>
             </div>
           </main>
         </div>
