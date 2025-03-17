@@ -29,6 +29,7 @@ import UpdateSample from "./pages/dashboard/researcher/updateProject/UpdateSampl
 import TechnicianDashboard from "./pages/dashboard/technicien/TechnicianDashboard";
 import SamplesListe from "./pages/dashboard/technicien/SamplesListe";
 import SampleDetail from "./pages/dashboard/technicien/SampleDetail";
+import TechnicianReportPage from "./pages/dashboard/technicien/TechnicianReportPage";
 
 // Pages publiques
 import HomePage from "./pages/HomePage";
@@ -195,6 +196,15 @@ function App() {
           element={
             <PrivateRoute allowedRoles={["technicien", "admin"]}>
               <SampleDetail />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/dashboard/technician/samples/:sampleId/report"
+          element={
+            <PrivateRoute allowedRoles={["technicien", "admin"]}>
+              <TechnicianReportPage />
             </PrivateRoute>
           }
         />
