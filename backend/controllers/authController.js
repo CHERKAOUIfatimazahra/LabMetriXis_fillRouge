@@ -36,7 +36,7 @@ exports.register = async (req, res) => {
     const verificationToken = jwt.sign(
       { id: user._id },
       process.env.JWT_SECRET,
-      { expiresIn: "1h" }
+      { expiresIn: "2h" }
     );
 
     user.verificationToken = verificationToken;
@@ -61,8 +61,6 @@ exports.register = async (req, res) => {
 // Vérification de l'email
 exports.verifyEmail = async (req, res) => {
   const { token } = req.query;
-
-  // Vérifiez le token de vérification avec JWT
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await User.findById(decoded.id);
@@ -73,13 +71,13 @@ exports.verifyEmail = async (req, res) => {
     user.verificationToken = undefined;
     await user.save();
 
-    // Rediriger vers une page spécifique dans le frontend
     return res.redirect("http://localhost:5173/login");
   } catch (error) {
     return res.redirect("http://localhost:5173/error?message=invalid-token");
   }
 };
 
+// Connexion d'un utilisateur
 exports.login = async (req, res) => {
   const { email, password } = req.body;
 
@@ -98,7 +96,6 @@ exports.login = async (req, res) => {
       });
     }
 
-    // Validate user role
     const validRoles = ["admin", "chercheur", "technicien"];
     if (!validRoles.includes(user.role)) {
       return res
@@ -106,7 +103,6 @@ exports.login = async (req, res) => {
         .json({ message: "Rôle d'utilisateur non reconnu" });
     }
 
-    // Create user object with necessary data
     const userData = {
       name: user.name,
       email: user.email,
@@ -115,7 +111,7 @@ exports.login = async (req, res) => {
       specialty: user.specialty,
     };
 
-    // Logic for OTP sending only if required
+    // Gestion de l'OTP
     if (!user.otp || user.otpExpires < Date.now()) {
       const lastOTPSentAt = user.lastOTPSentAt;
       const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
@@ -123,11 +119,11 @@ exports.login = async (req, res) => {
         const token = jwt.sign(
           { id: user._id, role: user.role },
           process.env.JWT_SECRET,
-          { expiresIn: "1h" }
+          { expiresIn: "2h" }
         );
         return res.json({ token, user: userData });
       } else {
-        // Generate a new OTP and send it to the user
+        // Générer et sauvegarder un nouvel OTP
         const otp = generateOTP();
         user.otp = otp;
         user.otpExpires = Date.now() + 3 * 60 * 1000;
@@ -141,7 +137,7 @@ exports.login = async (req, res) => {
       const token = jwt.sign(
         { id: user._id, role: user.role },
         process.env.JWT_SECRET,
-        { expiresIn: "1h" }
+        { expiresIn: "2h" }
       );
       return res.json({ token, user: userData });
     }
@@ -151,7 +147,7 @@ exports.login = async (req, res) => {
   }
 };
 
-// Route pour la verification d'un OTP
+// la verification d'un OTP
 exports.verifyOTP = async (req, res) => {
   const { email, otp } = req.body;
 
@@ -183,11 +179,10 @@ exports.verifyOTP = async (req, res) => {
     user.otpExpires = undefined;
     await user.save();
 
-    // Créer le token et renvoyer les données utilisateur
     const token = jwt.sign(
       { id: user._id, role: user.role },
       process.env.JWT_SECRET,
-      { expiresIn: "1h" }
+      { expiresIn: "2h" }
     );
 
     const userData = {
@@ -223,7 +218,7 @@ exports.resendOTP = async (req, res) => {
       return res.status(404).json({ message: "Utilisateur non trouvé" });
     }
 
-    // Vérifier si un OTP récent existe déjà
+    // Vérifier si un OTP existe déjà
     if (user.otp && user.otpExpires && user.otpExpires > Date.now()) {
       return res.status(400).json({
         message:
@@ -234,7 +229,7 @@ exports.resendOTP = async (req, res) => {
     // Générer et sauvegarder un nouveau OTP
     const otp = generateOTP();
     user.otp = otp;
-    user.otpExpires = Date.now() + 3 * 60 * 1000; // 3 minutes
+    user.otpExpires = Date.now() + 3 * 60 * 1000;
     await user.save();
 
     // Envoyer l'email avec l'OTP
@@ -253,15 +248,15 @@ exports.resendOTP = async (req, res) => {
   }
 };
 
+// renvoyer un lien de réinitialisation de mot de passe
 exports.forgetPassword = async (req, res) => {
   const { email } = req.body;
 
   const user = await User.findOne({ email });
   if (!user) return res.status(404).json({ message: "User not found" });
 
-  // Génération du token de vérification
   const verificationToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-    expiresIn: "1h",
+    expiresIn: "2h",
   });
 
   user.verificationToken = verificationToken;
@@ -277,11 +272,10 @@ exports.forgetPassword = async (req, res) => {
   res.json({ message: "Email sent for password reset" });
 };
 
-// Route pour réinitialiser le mot de passe
+// réinitialiser le mot de passe
 exports.resetPassword = async (req, res) => {
   const { token, newPassword } = req.body;
 
-  // Vérification du token
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await User.findById(decoded.id);
