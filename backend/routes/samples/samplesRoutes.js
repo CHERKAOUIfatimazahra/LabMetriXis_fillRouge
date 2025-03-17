@@ -24,4 +24,12 @@ router.get(
   sampleController.getAllSamples
 );
 
+// update the status of the sample 
+router.patch(
+  "/samples/:sampleId/status",
+  verifyToken,
+  sampleController.updateSampleStatus
+);
+
+
 module.exports = router;
