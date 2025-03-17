@@ -31,5 +31,18 @@ router.patch(
   sampleController.updateSampleStatus
 );
 
+// Soumettre un rapport d'analyse
+router.post(
+  "/samples/:sampleId/analysis-report",
+  verifyToken,
+  sampleController.submitAnalysisReport
+);
+
+// Récupérer un rapport d'analyse
+router.get(
+  "/samples/:sampleId/analysis-report",
+  verifyToken,
+  sampleController.getAnalysisReport
+);
 
 module.exports = router;
