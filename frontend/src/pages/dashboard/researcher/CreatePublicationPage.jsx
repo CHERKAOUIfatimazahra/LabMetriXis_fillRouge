@@ -10,9 +10,6 @@ import {
   FaUsers,
   FaFileAlt,
   FaArrowLeft,
-  FaFile,
-  FaCalendarAlt,
-  FaCheckCircle,
   FaSave,
   FaPaperPlane,
   FaBold,
@@ -26,7 +23,6 @@ import {
   FaAlignCenter,
   FaAlignRight,
   FaUpload,
-  FaDownload,
   FaImage,
   FaTable,
   FaFilePdf,
@@ -49,7 +45,6 @@ function CreateFinalReportPage() {
   const [versionHistory, setVersionHistory] = useState([]);
   const fileInputRef = useRef(null);
   const textareaRef = useRef(null);
-  const autoSaveTimerRef = useRef(null);
 
   useEffect(() => {
     const fetchProject = async () => {
@@ -212,22 +207,18 @@ function CreateFinalReportPage() {
       doc.setFontSize(16);
       doc.text(title, 20, 20);
 
-      // Add date
       doc.setFontSize(12);
       doc.text(`Date: ${formData.publishedAt}`, 20, 30);
 
-      // Add content with word wrap
       doc.setFontSize(12);
       const splitText = doc.splitTextToSize(formData.content, 170);
       doc.text(splitText, 20, 40);
 
-      // Create a safe filename with fallback
       const safeFilename =
         project && project.projectName
           ? project.projectName.replace(/\s+/g, "_")
           : "rapport";
 
-      // Save the PDF
       doc.save(`${safeFilename}_Final_Report.pdf`);
 
       toast.success("PDF généré avec succès");
@@ -263,11 +254,9 @@ function CreateFinalReportPage() {
   };
 
   const formatText = (format) => {
-    // Get textarea element
     const textarea = textareaRef.current;
     if (!textarea) return;
 
-    // Get selection start and end positions
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
     const selectedText = formData.content.substring(start, end);
@@ -275,7 +264,6 @@ function CreateFinalReportPage() {
     let formattedText = selectedText;
     let cursorOffset = 0;
 
-    // Apply formatting based on the format type
     switch (format) {
       case "bold":
         formattedText = `**${selectedText}**`;
@@ -304,14 +292,12 @@ function CreateFinalReportPage() {
         cursorOffset = 3;
         break;
       default:
-        // For other formatting, show toast
         toast.info(
           `Fonction de formatage "${format}" à implémenter avec un éditeur de texte riche`
         );
         return;
     }
 
-    // Update content with formatted text
     const newContent =
       formData.content.substring(0, start) +
       formattedText +
@@ -322,7 +308,6 @@ function CreateFinalReportPage() {
       content: newContent,
     });
 
-    // Set cursor position after formatting tags
     setTimeout(() => {
       textarea.focus();
       textarea.setSelectionRange(
@@ -374,7 +359,7 @@ function CreateFinalReportPage() {
               </div>
             ) : project ? (
               <div className="bg-white rounded-lg shadow-xl overflow-hidden">
-                {/* Form Section with Word-like UI */}
+                {/* Form Section */}
                 <div className="p-6">
                   <h2 className="text-xl font-bold text-teal-800 mb-6 flex items-center">
                     <FaFileAlt className="mr-2" />
@@ -513,7 +498,7 @@ function CreateFinalReportPage() {
                       </div>
                     )}
 
-                    {/* Word-like text editor toolbar */}
+                    {/* text editor toolbar */}
                     <div className="rounded-t-lg border border-gray-300 border-b-0 overflow-hidden">
                       <div className="bg-gray-100 px-3 py-2 flex flex-wrap items-center gap-1">
                         <div className="flex items-center border-r border-gray-300 pr-2 mr-2">
