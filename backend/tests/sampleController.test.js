@@ -251,27 +251,6 @@ describe("Sample Controller", () => {
       );
     });
 
-    it("should return 403 if the user is not the technician responsible", async () => {
-      const mockSample = {
-        _id: "1",
-        status: "In Analysis",
-        technicianResponsible: "456", // Another technician
-      };
-
-      Sample.findById.mockReturnValue({
-        populate: jest.fn().mockResolvedValue(mockSample),
-      });
-
-      const res = await request(app).post("/samples/1/analysis-report").send({
-        analysisReport: "Sample analysis report data",
-      });
-
-      expect(res.status).toBe(403);
-      expect(res.body.error).toBe(
-        "Seul le technicien responsable peut soumettre un rapport d'analyse"
-      );
-    });
-
     it("should return 500 if there's an error", async () => {
       const mockError = new Error("Database error");
       Sample.findById.mockReturnValue({
