@@ -58,7 +58,7 @@ function UpdateSample() {
   const [sampleStatuses, setSampleStatuses] = useState([
     "Pending",
     "In Analysis",
-    "Analyzed"
+    "Analyzed",
   ]);
 
   // Alert state
@@ -107,7 +107,7 @@ function UpdateSample() {
             sampleData: JSON.stringify(sampleData),
             // Si un fichier est sélectionné
             file: protocolFile,
-          },
+          }
         );
 
         const sample = response.data;
@@ -128,7 +128,7 @@ function UpdateSample() {
           storageConditions: sample.storageConditions || "",
           collectionDate: formatDate(sample.collectionDate),
           expirationDate: formatDate(sample.expirationDate),
-           technicianResponsible: sample.technicianResponsible?._id,
+          technicianResponsible: sample.technicianResponsible?._id,
           status: sample.status || "Pending",
         });
 
@@ -138,11 +138,10 @@ function UpdateSample() {
             name: sample.protocolFile.fileName,
             path: sample.protocolFile.fileLocation,
           });
-          }
-          
-          console.log(sample);
-          console.log(sample.technicianResponsible);
+        }
 
+        console.log(sample);
+        console.log(sample.technicianResponsible);
 
         setIsLoading(false);
       } catch (error) {
@@ -760,7 +759,6 @@ function UpdateSample() {
                                 : currentProtocolFile?.name
                             )}
                           </div>
-                          
                         </div>
                       )}
                     </div>
