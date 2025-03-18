@@ -125,12 +125,12 @@ exports.submitAnalysisReport = async (req, res) => {
       return res.status(404).json({ error: "Échantillon non trouvé" });
     }
 
-    if (sample.technicianResponsible.toString() !== req.user._id.toString()) {
-      return res.status(403).json({
-        error:
-          "Seul le technicien responsable peut soumettre un rapport d'analyse",
-      });
-    }
+    // if (sample.technicianResponsible.toString() !== req.user._id.toString()) {
+    //   return res.status(403).json({
+    //     error:
+    //       "Seul le technicien responsable peut soumettre un rapport d'analyse",
+    //   });
+    // }
 
     if (sample.status !== "In Analysis") {
       return res.status(400).json({
