@@ -1,6 +1,18 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { FaVial, FaSearch, FaFilter, FaEye, FaDownload, FaPlus, FaSort, FaChevronLeft, FaChevronRight } from "react-icons/fa";
+import {
+  FaVial,
+  FaSearch,
+  FaFilter,
+  FaEye,
+  FaDownload,
+  FaChevronLeft,
+  FaChevronRight,
+  FaClipboardList,
+  FaCog,
+  FaUsers,
+  FaUserCog,
+} from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import Header from "../../../components/dashboard/Header";
 import Sidebar from "../../../components/dashboard/Sidebar";
@@ -28,37 +40,37 @@ function SamplesList() {
   const statusOptions = ["All", "Analyzed", "In Analysis", "Pending"];
 
   const navItems = [
-    {
-      id: "overview",
-      label: "Overview",
-      icon: <FaVial />,
-      navigator: "/dashboard/technician",
-    },
-    {
-      id: "samples",
-      label: "Samples",
-      icon: <FaVial />,
-      navigator: "/dashboard/technician/samples",
-    },
-    {
-      id: "equipment",
-      label: "Equipment",
-      icon: <FaVial />,
-      navigator: "/dashboard/technician/equipment",
-    },
-    {
-      id: "team",
-      label: "Lab Team",
-      icon: <FaVial />,
-      navigator: "/dashboard/technician/team",
-    },
-    {
-      id: "profile",
-      label: "Profile",
-      icon: <FaVial />,
-      navigator: "/dashboard/technician/profile",
-    },
-  ];
+      {
+        id: "overview",
+        label: "Overview",
+        icon: <FaClipboardList />,
+        navigator: "/dashboard/technician",
+      },
+      {
+        id: "samples",
+        label: "Samples",
+        icon: <FaVial />,
+        navigator: "/dashboard/technician/samples",
+      },
+      {
+        id: "equipment",
+        label: "Equipment",
+        icon: <FaCog />,
+        navigator: "/dashboard/technician/equipment",
+      },
+      {
+        id: "team",
+        label: "Lab Team",
+        icon: <FaUsers />,
+        navigator: "/dashboard/technician/team",
+      },
+      {
+        id: "profile",
+        label: "Profile",
+        icon: <FaUserCog />,
+        navigator: "/dashboard/technician/profile",
+      },
+    ];
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -277,8 +289,8 @@ function SamplesList() {
         title="Laboratory Samples"
         userName={userName || "Lab Technician"}
         userInitials={userInitials || "LT"}
-        bgColor="bg-indigo-700 backdrop-filter backdrop-blur-lg bg-opacity-95"
-        hoverColor="text-indigo-200"
+        bgColor="bg-blue-700 backdrop-filter backdrop-blur-lg bg-opacity-90"
+        hoverColor="text-blue-200"
       />
 
       <div className="container mx-auto px-4 py-6">
@@ -288,7 +300,7 @@ function SamplesList() {
               activeTab={activeTab}
               setActiveTab={setActiveTab}
               navItems={navItems}
-              accentColor="indigo"
+              accentColor="blue"
             />
           </div>
 
