@@ -54,21 +54,17 @@ function AddSample() {
     "pieces",
   ]);
 
-  // Alert state
   const [alert, setAlert] = useState({
     show: false,
     message: "",
-    type: "", // success, error, warning
+    type: "",
   });
 
-  // Form validation errors state
   const [errors, setErrors] = useState({});
 
-  // Initial form data state
   const [formData, setFormData] = useState({
     samples: [],
 
-    // New samples properties aligned with schema
     currentSample: {
       name: "",
       description: "",
@@ -84,7 +80,6 @@ function AddSample() {
     },
   });
 
-  // Validate a single sample
   const validateSample = (sample) => {
     const newErrors = {};
 
@@ -122,7 +117,6 @@ function AddSample() {
       newErrors.protocolFile = "Un fichier de protocole est requis";
     }
 
-    // Date validation
     if (sample.collectionDate && sample.expirationDate) {
       const collectionDate = new Date(sample.collectionDate);
       const expirationDate = new Date(sample.expirationDate);
@@ -136,7 +130,6 @@ function AddSample() {
     return newErrors;
   };
 
-  // Handle sample form changes
   const handleSampleChange = (e) => {
     const { name, value, type, files } = e.target;
 
@@ -150,7 +143,6 @@ function AddSample() {
       });
       setProtocolFile(files[0]);
 
-      // Clear protocol file error if a file is selected
       if (files[0] && errors.protocolFile) {
         setErrors({
           ...errors,
@@ -181,14 +173,12 @@ function AddSample() {
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
 
-      // Show error alert
       setAlert({
         show: true,
         message: "Veuillez corriger les erreurs avant d'ajouter l'échantillon",
         type: "error",
       });
 
-      // Automatically hide alert after 5 seconds
       setTimeout(() => {
         setAlert({ show: false, message: "", type: "" });
       }, 5000);
@@ -220,14 +210,12 @@ function AddSample() {
       },
     });
 
-    // Show success alert for adding a sample
     setAlert({
       show: true,
       message: "Échantillon ajouté avec succès à la liste",
       type: "success",
     });
 
-    // Automatically hide alert after 5 seconds
     setTimeout(() => {
       setAlert({ show: false, message: "", type: "" });
     }, 5000);
@@ -242,14 +230,12 @@ function AddSample() {
       samples: formData.samples.filter((sample) => sample.id !== sampleId),
     });
 
-    // Show info alert
     setAlert({
       show: true,
       message: "Échantillon retiré de la liste",
       type: "info",
     });
 
-    // Automatically hide alert after 5 seconds
     setTimeout(() => {
       setAlert({ show: false, message: "", type: "" });
     }, 5000);
@@ -317,18 +303,6 @@ function AddSample() {
     fetchTeamMembers();
   }, []);
 
-  const getFileIcon = (fileName) => {
-    if (!fileName) return <FaUpload />;
-
-    const extension = fileName.split(".").pop().toLowerCase();
-
-    if (["pdf"].includes(extension)) return <FaFilePdf />;
-    if (["doc", "docx"].includes(extension)) return <FaFileWord />;
-    if (["xls", "xlsx"].includes(extension)) return <FaFileExcel />;
-
-    return <FaFileAlt />;
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -339,7 +313,6 @@ function AddSample() {
         type: "warning",
       });
 
-      // Automatically hide alert after 5 seconds
       setTimeout(() => {
         setAlert({ show: false, message: "", type: "" });
       }, 5000);
@@ -404,14 +377,12 @@ function AddSample() {
 
       await Promise.all(samplePromises);
 
-      // Show success alert and navigate after a delay
       setAlert({
         show: true,
         message: "Échantillons ajoutés avec succès au projet!",
         type: "success",
       });
 
-      // Navigate after 2 seconds to give user time to see the success message
       setTimeout(() => {
         navigate(`/dashboard/researcher/projects`);
       }, 2000);
@@ -424,14 +395,12 @@ function AddSample() {
         type: "error",
       });
 
-      // Automatically hide alert after 5 seconds
       setTimeout(() => {
         setAlert({ show: false, message: "", type: "" });
       }, 5000);
     }
   };
 
-  // Navigation items config
   const navItems = [
     {
       id: "overview",
@@ -465,7 +434,6 @@ function AddSample() {
     },
   ];
 
-  // Alert component
   const AlertComponent = ({ show, message, type }) => {
     if (!show) return null;
 
