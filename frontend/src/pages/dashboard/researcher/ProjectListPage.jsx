@@ -10,8 +10,6 @@ import {
   FaEye,
   FaEdit,
   FaTrash,
-  FaDollarSign,
-  FaFlask,
   FaChevronLeft,
   FaChevronRight,
 } from "react-icons/fa";
@@ -19,7 +17,6 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import Header from "../../../components/dashboard/Header";
 import Sidebar from "../../../components/dashboard/Sidebar";
-import { toast } from "react-toastify";
 
 function ProjectListPage() {
   const navigate = useNavigate();
@@ -28,8 +25,6 @@ function ProjectListPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("All");
   const [projects, setProjects] = useState([]);
-  const [statistics, setStatistics] = useState(null);
-
   const [pagination, setPagination] = useState({
     currentPage: 1,
     projectsPerPage: 8,
@@ -69,18 +64,6 @@ function ProjectListPage() {
     },
   ];
 
-  const handleStatusFilter = (e) => {
-    setFilterStatus(e.target.value);
-    setPagination((prev) => ({ ...prev, currentPage: 1 }));
-  };
-
-  const handlePageChange = (newPage) => {
-    setPagination((prev) => ({ ...prev, currentPage: newPage }));
-    document
-      .querySelector(".projects-table-container")
-      ?.scrollIntoView({ behavior: "smooth" });
-  };
-
   const getStatusColor = (status) => {
     switch (status) {
       case "Completed":
@@ -109,7 +92,18 @@ function ProjectListPage() {
     setPagination((prev) => ({ ...prev, currentPage: 1 }));
   };
 
-  // Fetch projects
+  const handleStatusFilter = (e) => {
+    setFilterStatus(e.target.value);
+    setPagination((prev) => ({ ...prev, currentPage: 1 }));
+  };
+
+  const handlePageChange = (newPage) => {
+    setPagination((prev) => ({ ...prev, currentPage: newPage }));
+    document
+      .querySelector(".projects-table-container")
+      ?.scrollIntoView({ behavior: "smooth" });
+  };
+
   useEffect(() => {
     const fetchProjects = async () => {
       try {
@@ -121,8 +115,6 @@ function ProjectListPage() {
             },
           }
         );
-
-        // console.log(response.data);
 
         if (Array.isArray(response.data)) {
           setProjects(response.data);
@@ -142,41 +134,15 @@ function ProjectListPage() {
     fetchProjects();
   }, []);
 
-  // Fetch statistics
-  useEffect(() => {
-    const fetchStatistics = async () => {
-      try {
-        const response = await axios.get(
-          `${import.meta.env.VITE_API_URL}/statistic/statistic`,
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
-          }
-        );
-        setStatistics(response.data);
-      } catch (error) {
-        console.error("Error fetching statistics:", error);
-      }
-    };
-
-    fetchStatistics();
-  }, []);
-
-  // Filter projects based on search term and status
   const filteredProjects = projects.filter((project) => {
     const matchesSearch =
-      (project.projectName &&
-        project.projectName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (project.description &&
-        project.description.toLowerCase().includes(searchTerm.toLowerCase()));
+      project.projectName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      project.description?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus =
       filterStatus === "All" || project.status === filterStatus;
-
     return matchesSearch && matchesStatus;
   });
 
-  // Update pagination when filtered projects change
   useEffect(() => {
     setPagination((prev) => {
       const newTotalPages = Math.ceil(
@@ -188,7 +154,6 @@ function ProjectListPage() {
     });
   }, [filteredProjects]);
 
-  // Calculate current page projects (8 per page)
   const indexOfLastProject =
     pagination.currentPage * pagination.projectsPerPage;
   const indexOfFirstProject = indexOfLastProject - pagination.projectsPerPage;
@@ -197,12 +162,30 @@ function ProjectListPage() {
     indexOfLastProject
   );
 
-  // Generate page numbers for pagination
   const pageNumbers = [];
   for (let i = 1; i <= pagination.totalPages; i++) {
     pageNumbers.push(i);
   }
 
+  const handleDeleteProject = async (projectId) => {
+    if (!window.confirm("Voulez-vous vraiment supprimer ce projet ?")) return;
+    try {
+      await axios.delete(
+        `${import.meta.env.VITE_API_URL}/project/projects/${projectId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+      alert("Projet supprimé avec succès !");
+    } catch (error) {
+      console.error("Error deleting project:", error);
+      alert("Échec de la suppression !");
+    }
+  };
+
+  // Loading state
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -216,6 +199,7 @@ function ProjectListPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      {/* Header */}
       <Header
         title="Research Lab Portal"
         userName="Dr. Roberts"
@@ -227,6 +211,7 @@ function ProjectListPage() {
 
       <div className="container mx-auto px-4 py-6">
         <div className="flex flex-col md:flex-row gap-6">
+          {/* Sidebar */}
           <div>
             <Sidebar
               activeTab={activeTab}
@@ -236,51 +221,10 @@ function ProjectListPage() {
             />
           </div>
 
+          {/* Main Content */}
           <main className="flex-1">
-            {/* Statistics Section */}
-            {statistics && (
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-4 rounded-lg shadow relative overflow-hidden">
-                  <div className="absolute right-0 top-0 w-16 h-16 bg-white opacity-10 rounded-bl-full"></div>
-                  <h3 className="text-sm font-medium mb-1">Total Projects</h3>
-                  <p className="text-3xl font-bold">
-                    {statistics.totalProjects}
-                  </p>
-                </div>
-
-                <div className="bg-gradient-to-r from-teal-500 to-teal-600 text-white p-4 rounded-lg shadow relative overflow-hidden">
-                  <div className="absolute right-0 top-0 w-16 h-16 bg-white opacity-10 rounded-bl-full"></div>
-                  <h3 className="text-sm font-medium mb-1">Active Projects</h3>
-                  <p className="text-3xl font-bold">
-                    {statistics.statusDistribution?.Active || 0}
-                  </p>
-                </div>
-
-                <div className="bg-gradient-to-r from-green-500 to-green-600 text-white p-4 rounded-lg shadow relative overflow-hidden">
-                  <div className="absolute right-0 top-0 w-16 h-16 bg-white opacity-10 rounded-bl-full"></div>
-                  <h3 className="text-sm font-medium mb-1">Total Budget</h3>
-                  <p className="text-3xl font-bold">
-                    $
-                    {statistics.budgetStatistics?.totalBudget?.toLocaleString() ||
-                      0}
-                  </p>
-                </div>
-
-                <div className="bg-gradient-to-r from-purple-500 to-purple-600 text-white p-4 rounded-lg shadow relative overflow-hidden">
-                  <div className="absolute right-0 top-0 w-16 h-16 bg-white opacity-10 rounded-bl-full"></div>
-                  <h3 className="text-sm font-medium mb-1">Total Samples</h3>
-                  <p className="text-3xl font-bold">
-                    {Object.values(statistics.sampleStatistics || {}).reduce(
-                      (a, b) => a + b,
-                      0
-                    )}
-                  </p>
-                </div>
-              </div>
-            )}
-
             <div className="bg-white rounded-lg shadow-xl p-6 border border-gray-100">
-              {/* Header */}
+              {/* Header & Controls */}
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                 <h1 className="text-2xl font-bold text-teal-800">
                   <span className="border-b-4 border-teal-500 pb-1">
@@ -289,6 +233,7 @@ function ProjectListPage() {
                 </h1>
 
                 <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+                  {/* Search */}
                   <div className="relative flex-grow">
                     <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                     <input
@@ -300,6 +245,7 @@ function ProjectListPage() {
                     />
                   </div>
 
+                  {/* Filter */}
                   <div className="relative">
                     <select
                       value={filterStatus}
@@ -314,6 +260,7 @@ function ProjectListPage() {
                     <FaFilter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                   </div>
 
+                  {/* Add New Project */}
                   <button
                     onClick={() =>
                       navigate("/dashboard/researcher/projects/create")
@@ -358,6 +305,7 @@ function ProjectListPage() {
                           key={project._id}
                           className="hover:bg-gray-50 transition-colors duration-150"
                         >
+                          {/* Project Name */}
                           <td className="px-6 py-4">
                             <div className="flex items-start">
                               <div className="flex-shrink-0 h-10 w-10 rounded-lg bg-teal-100 flex items-center justify-center text-teal-600">
@@ -367,7 +315,6 @@ function ProjectListPage() {
                                 <div className="text-sm font-medium text-gray-900">
                                   {project.projectName}
                                 </div>
-
                                 <div className="text-xs text-teal-600 mt-1">
                                   Budget: $
                                   {project.budget?.toLocaleString() || "N/A"}
@@ -375,17 +322,19 @@ function ProjectListPage() {
                               </div>
                             </div>
                           </td>
+
+                          {/* Status */}
                           <td className="px-6 py-4">
-                            <div className="flex flex-col items-start space-y-2">
-                              <span
-                                className={`px-3 py-1 text-xs rounded-full ${getStatusColor(
-                                  project.status
-                                )}`}
-                              >
-                                {project.status || "N/A"}
-                              </span>
-                            </div>
+                            <span
+                              className={`px-3 py-1 text-xs rounded-full ${getStatusColor(
+                                project.status
+                              )}`}
+                            >
+                              {project.status || "N/A"}
+                            </span>
                           </td>
+
+                          {/* Team Lead */}
                           <td className="px-6 py-4">
                             <div className="flex items-center">
                               <div className="flex-shrink-0 h-8 w-8 bg-teal-200 text-teal-600 rounded-full flex items-center justify-center">
@@ -405,6 +354,8 @@ function ProjectListPage() {
                               </div>
                             </div>
                           </td>
+
+                          {/* Timeline */}
                           <td className="px-6 py-4">
                             <div className="flex flex-col">
                               <div className="flex items-center text-xs text-gray-700">
@@ -429,6 +380,8 @@ function ProjectListPage() {
                               </div>
                             </div>
                           </td>
+
+                          {/* Progress */}
                           <td className="px-6 py-4">
                             <div className="w-full">
                               <div className="flex justify-between mb-1">
@@ -446,6 +399,8 @@ function ProjectListPage() {
                               </div>
                             </div>
                           </td>
+
+                          {/* Actions */}
                           <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                             <div className="flex justify-center space-x-2">
                               <button
@@ -468,7 +423,10 @@ function ProjectListPage() {
                               >
                                 <FaEdit size={16} />
                               </button>
-                              <button className="p-2 text-red-600 hover:text-red-800 bg-red-100 rounded-full hover:bg-red-200 transition-colors duration-200">
+                              <button
+                                className="p-2 text-red-600 hover:text-red-800 bg-red-100 rounded-full hover:bg-red-200 transition-colors duration-200"
+                                onClick={() => handleDeleteProject(project._id)}
+                              >
                                 <FaTrash size={16} />
                               </button>
                             </div>
@@ -477,11 +435,16 @@ function ProjectListPage() {
                       ))
                     ) : (
                       <tr>
-                        <td
-                          colSpan="6"
-                          className="px-6 py-10 text-center text-gray-500"
-                        >
-                          No projects found matching your search criteria.
+                        <td colSpan={6} className="px-6 py-10 text-center">
+                          <div className="flex flex-col items-center justify-center">
+                            <FaClipboardList className="text-gray-300 text-5xl mb-3" />
+                            <p className="text-gray-500 font-medium">
+                              No projects found
+                            </p>
+                            <p className="text-gray-400 text-sm mt-1">
+                              Try adjusting your search or filter criteria
+                            </p>
+                          </div>
                         </td>
                       </tr>
                     )}
@@ -489,96 +452,42 @@ function ProjectListPage() {
                 </table>
               </div>
 
-              {/* Improved Pagination */}
-              {filteredProjects.length > 0 && (
-                <div className="mt-6 flex flex-col sm:flex-row justify-between items-center">
-                  <div className="text-sm text-gray-700 mb-4 sm:mb-0">
-                    Showing{" "}
-                    <span className="font-medium">
-                      {indexOfFirstProject + 1}
-                    </span>{" "}
-                    to{" "}
-                    <span className="font-medium">
-                      {Math.min(indexOfLastProject, filteredProjects.length)}
-                    </span>{" "}
-                    of{" "}
-                    <span className="font-medium">
-                      {filteredProjects.length}
-                    </span>{" "}
-                    projects
+              {/* Pagination */}
+              {pagination.totalPages > 1 && (
+                <div className="flex justify-between items-center mt-6">
+                  <div className="text-sm text-gray-500">
+                    Showing {indexOfFirstProject + 1} to{" "}
+                    {Math.min(indexOfLastProject, filteredProjects.length)} of{" "}
+                    {filteredProjects.length} projects
                   </div>
-
-                  <div className="flex items-center">
-                    {/* Pagination buttons */}
-                    <button
-                      onClick={() => handlePageChange(1)}
-                      disabled={pagination.currentPage === 1}
-                      className={`h-8 w-8 flex items-center justify-center rounded-l-md ${
-                        pagination.currentPage === 1
-                          ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                          : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                      }`}
-                    >
-                      <FaChevronLeft size={12} />
-                      <FaChevronLeft size={12} className="-ml-1" />
-                    </button>
-
+                  <div className="flex space-x-1">
                     <button
                       onClick={() =>
                         handlePageChange(pagination.currentPage - 1)
                       }
                       disabled={pagination.currentPage === 1}
-                      className={`h-8 w-8 flex items-center justify-center ${
+                      className={`px-3 py-1 rounded ${
                         pagination.currentPage === 1
                           ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                           : "bg-gray-200 text-gray-700 hover:bg-gray-300"
                       }`}
                     >
-                      <FaChevronLeft size={12} />
+                      <FaChevronLeft size={14} />
                     </button>
 
-                    {/* Dynamic page number buttons */}
-                    <div className="flex items-center">
-                      {pageNumbers.map((number) => {
-                        if (
-                          number === 1 ||
-                          number === pagination.totalPages ||
-                          (number >= pagination.currentPage - 1 &&
-                            number <= pagination.currentPage + 1)
-                        ) {
-                          return (
-                            <button
-                              key={number}
-                              onClick={() => handlePageChange(number)}
-                              className={`h-8 w-8 flex items-center justify-center ${
-                                pagination.currentPage === number
-                                  ? "bg-teal-500 text-white"
-                                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                              }`}
-                            >
-                              {number}
-                            </button>
-                          );
-                        }
-
-                        if (
-                          (number === 2 && pagination.currentPage > 3) ||
-                          (number === pagination.totalPages - 1 &&
-                            pagination.currentPage < pagination.totalPages - 2)
-                        ) {
-                          return (
-                            <span
-                              key={number}
-                              className="h-8 w-8 flex items-center justify-center bg-gray-100"
-                            >
-                              ...
-                            </span>
-                          );
-                        }
-
-                        return null;
-                      })}
-                    </div>
+                    {pageNumbers.map((number) => (
+                      <button
+                        key={number}
+                        onClick={() => handlePageChange(number)}
+                        className={`px-3 py-1 rounded ${
+                          pagination.currentPage === number
+                            ? "bg-teal-500 text-white"
+                            : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                        }`}
+                      >
+                        {number}
+                      </button>
+                    ))}
 
                     <button
                       onClick={() =>
@@ -587,28 +496,13 @@ function ProjectListPage() {
                       disabled={
                         pagination.currentPage === pagination.totalPages
                       }
-                      className={`h-8 w-8 flex items-center justify-center ${
+                      className={`px-3 py-1 rounded ${
                         pagination.currentPage === pagination.totalPages
                           ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                           : "bg-gray-200 text-gray-700 hover:bg-gray-300"
                       }`}
                     >
-                      <FaChevronRight size={12} />
-                    </button>
-
-                    <button
-                      onClick={() => handlePageChange(pagination.totalPages)}
-                      disabled={
-                        pagination.currentPage === pagination.totalPages
-                      }
-                      className={`h-8 w-8 flex items-center justify-center rounded-r-md ${
-                        pagination.currentPage === pagination.totalPages
-                          ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                          : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                      }`}
-                    >
-                      <FaChevronRight size={12} />
-                      <FaChevronRight size={12} className="-ml-1" />
+                      <FaChevronRight size={14} />
                     </button>
                   </div>
                 </div>
