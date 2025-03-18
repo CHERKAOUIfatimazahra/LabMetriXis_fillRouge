@@ -1,6 +1,6 @@
 const Notification = require("../models/Notification");
 
-// Get all notifications for the current user
+// Get all notifications
 exports.getNotifications = async (req, res) => {
   try {
     const notifications = await Notification.find({ user: req.user.id })
@@ -68,7 +68,7 @@ exports.markAllAsRead = async (req, res) => {
   }
 };
 
-// Create a new notification dynamically
+// Create a notification
 exports.createNotification = async (
   userId,
   message,
@@ -100,7 +100,7 @@ exports.createNotification = async (
   }
 };
 
-// Ajoutez une nouvelle fonction pour envoyer à plusieurs utilisateurs
+// fonction pour envoyer à plusieurs utilisateurs
 exports.createNotificationForUsers = async (
   userIds,
   message,
@@ -111,7 +111,7 @@ exports.createNotificationForUsers = async (
 ) => {
   try {
     if (!Array.isArray(userIds)) {
-      userIds = [userIds]; // Convertir en tableau si un seul ID est passé
+      userIds = [userIds];
     }
 
     const notifications = [];

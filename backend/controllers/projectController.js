@@ -8,6 +8,7 @@ const {
   createNotificationForUsers,
 } = require("../controllers/NotificationsController");
 
+// creation de projet
 exports.createProject = async (req, res) => {
   try {
     const projectExists = await Project.findOne({
@@ -61,7 +62,7 @@ exports.createProject = async (req, res) => {
 
     await project.save();
 
-    // Création de notification pour le créateur
+    // Création de notification
     await createNotification(
       req.user._id,
       `Nouveau projet créé: ${projectName}`,
@@ -69,7 +70,7 @@ exports.createProject = async (req, res) => {
       null
     );
 
-    // Notification pour le teamLead et les membres (s'ils sont différents du créateur)
+    // Notification pour le teamLead et les membres
     const usersToNotify = [teamLead, ...teamMembers].filter(
       (userId) => userId.toString() !== req.user._id.toString()
     );
@@ -96,6 +97,7 @@ exports.createProject = async (req, res) => {
   }
 };
 
+// Ajouter un échantillon au projet
 exports.addSampleToProject = async (req, res) => {
   try {
     const { projectId } = req.params;
@@ -104,7 +106,6 @@ exports.addSampleToProject = async (req, res) => {
       return res.status(400).json({ error: "Invalid or missing project ID" });
     }
 
-    // Récupérer le projet
     const project = await Project.findById(projectId);
     if (!project) {
       return res.status(404).json({ error: "Project not found" });
@@ -141,7 +142,7 @@ exports.addSampleToProject = async (req, res) => {
 
     await sample.save();
 
-    // Création de notification pour l'utilisateur qui ajoute l'échantillon
+    // Création de notification
     await createNotification(
       req.user._id,
       `Nouvel échantillon ajouté: ${sample.name}`,
@@ -154,7 +155,7 @@ exports.addSampleToProject = async (req, res) => {
       (userId) => userId && userId.toString() !== req.user._id.toString()
     );
 
-    // Notification spéciale pour le technicien responsable s'il est différent de l'utilisateur actuel
+    // Notification spéciale pour le technicien responsable
     if (
       sample.technicianResponsible &&
       sample.technicianResponsible.toString() !== req.user._id.toString() &&
@@ -174,7 +175,6 @@ exports.addSampleToProject = async (req, res) => {
       );
     }
 
-    // Mettre à jour le projet
     await Project.findByIdAndUpdate(projectId, {
       $push: { samples: sample._id },
     });
@@ -189,6 +189,7 @@ exports.addSampleToProject = async (req, res) => {
   }
 };
 
+// Obtenir tous les échantillons d'un projet
 exports.getSamplesByProject = async (req, res) => {
   try {
     const { projectId } = req.params;
@@ -201,6 +202,7 @@ exports.getSamplesByProject = async (req, res) => {
   }
 };
 
+// Obtenir tous les projets
 exports.getAllProjects = async (req, res) => {
   try {
     const projects = await Project.find({
@@ -242,6 +244,7 @@ exports.getAllProjects = async (req, res) => {
   }
 };
 
+// Obtenir un projet par ID
 exports.getProjectById = async (req, res) => {
   try {
     const id = req.params.projectId;
@@ -278,6 +281,7 @@ exports.getProjectById = async (req, res) => {
   }
 };
 
+// Mettre à jour un projet
 exports.updateProject = async (req, res) => {
   try {
     const {
@@ -337,10 +341,14 @@ exports.updateProject = async (req, res) => {
   }
 };
 
+// Supprimer l'échantillion
 exports.deleteSample = async (req, res) => {
   try {
     const { projectId, sampleId } = req.params;
 
+    if (!projectId || !sampleId) {
+      return res.status(400).json({ error: "Invalid project or sample ID" });
+    }
     const sample = await Sample.findByIdAndDelete(sampleId);
     if (!sample) {
       return res.status(404).json({ error: "Sample not found" });
@@ -373,6 +381,7 @@ exports.deleteSample = async (req, res) => {
   }
 };
 
+// Supprimer le projet en tant que responsable du project
 exports.deleteProjectByRole = async (req, res) => {
   try {
     const id = req.params.projectId;
@@ -387,10 +396,6 @@ exports.deleteProjectByRole = async (req, res) => {
 
     await Project.findByIdAndDelete(id);
 
-    const user = await User.findById(req.user._id);
-    user.projects = user.projects.filter((p) => p._id.toString() !== id);
-    await user.save();
-
     res.json({ message: "Project deleted successfully" });
   } catch (error) {
     console.error("Error deleting project:", error);
@@ -398,7 +403,7 @@ exports.deleteProjectByRole = async (req, res) => {
   }
 };
 
-// Save draft of final report
+// Sauvegarde le brouillon du rapport final
 exports.saveFinalReportDraft = async (req, res) => {
   try {
     const { projectId } = req.params;
@@ -409,25 +414,28 @@ exports.saveFinalReportDraft = async (req, res) => {
       return res.status(404).json({ message: "Project not found" });
     }
 
-    // Save the current version to version history
     if (!project.reportVersions) {
       project.reportVersions = [];
     }
 
-    // Add current version to history
+    // Ajoute une nouvelle version du rapport
     project.reportVersions.push({
       content,
       createdAt: new Date(),
       createdBy: req.user._id,
     });
 
-    // Update the draft
+    // Met à jour le rapport final
     project.finalReport = {
       content,
       publishedAt,
       lastModified: new Date(),
       status: "draft",
     };
+
+    if (project.status !== "Active") {
+      project.status = "Active";
+    }
 
     await project.save();
 
@@ -441,7 +449,7 @@ exports.saveFinalReportDraft = async (req, res) => {
   }
 };
 
-// Publish final report
+// Publie le rapport final
 exports.publishFinalReport = async (req, res) => {
   try {
     const { projectId } = req.params;
@@ -452,7 +460,7 @@ exports.publishFinalReport = async (req, res) => {
       return res.status(404).json({ message: "Project not found" });
     }
 
-    // Update the final report
+    // Met à jour le rapport final
     project.finalReport = {
       content,
       publishedAt,
@@ -460,6 +468,10 @@ exports.publishFinalReport = async (req, res) => {
       status: "published",
       publishedBy: req.user._id,
     };
+
+    if (project.status !== "Completed") {
+      project.status = "Completed";
+    }
 
     await project.save();
 
@@ -473,7 +485,7 @@ exports.publishFinalReport = async (req, res) => {
   }
 };
 
-// Get report versions
+// Récupère toutes les versions du rapport
 exports.getReportVersions = async (req, res) => {
   try {
     const { projectId } = req.params;
@@ -491,7 +503,7 @@ exports.getReportVersions = async (req, res) => {
   }
 };
 
-// Get specific version
+// Récupère une version spécifique du rapport
 exports.getReportVersion = async (req, res) => {
   try {
     const { projectId, versionId } = req.params;
@@ -541,6 +553,10 @@ exports.uploadReport = async (req, res) => {
       status: "draft",
     };
 
+    if (project.status !== "Active") {
+      project.status = "Active";
+    }
+
     await project.save();
 
     res.status(200).json({
@@ -572,12 +588,10 @@ exports.updateSample = async (req, res) => {
   try {
     const { sampleId } = req.params;
 
-    // Vérifier si l'ID est valide
     if (!sampleId) {
       return res.status(400).json({ error: "Invalid sample ID" });
     }
 
-    // Récupérer l'échantillon et peupler le champ technicianResponsible avec les informations du technicien
     const sample = await Sample.findById(sampleId)
       .populate("technicianResponsible", "name email institution")
       .exec();
@@ -586,22 +600,18 @@ exports.updateSample = async (req, res) => {
       return res.status(404).json({ error: "Sample not found" });
     }
 
-    // Récupérer les nouvelles données
     let updatedData = req.body;
     if (req.body.sampleData) {
       updatedData = JSON.parse(req.body.sampleData);
     }
 
-    // Mettre à jour les champs fournis
     Object.keys(updatedData).forEach((key) => {
       if (updatedData[key] !== undefined) {
         sample[key] = updatedData[key];
       }
     });
 
-    // Gestion de l'upload du fichier (si un nouveau fichier est fourni)
     if (req.file) {
-      // Si un fichier existait déjà, supprimer l'ancien fichier
       if (sample.protocolFile) {
         const oldFilePath = path.join(
           __dirname,
@@ -610,18 +620,15 @@ exports.updateSample = async (req, res) => {
         );
       }
 
-      // Générer un nouveau nom de fichier unique
       const newFileName = `${Date.now()}-${req.file.originalname}`;
 
-      // Mettre à jour le fichier avec le nouveau
       sample.protocolFile = {
-        fileName: newFileName, // Nouveau nom unique
+        fileName: newFileName,
         fileLocation: path.join("uploads", newFileName),
         fileType: req.file.mimetype,
       };
     }
 
-    // Sauvegarder les modifications
     await sample.save();
 
     res.status(200).json({
@@ -633,5 +640,3 @@ exports.updateSample = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
-
-
