@@ -8,6 +8,8 @@ import {
   FaFlask,
   FaVial,
   FaClock,
+  FaHourglassHalf,
+  FaMoneyBillWave,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import Header from "../../../components/dashboard/Header";
@@ -30,6 +32,8 @@ function ResearcherDashboard() {
     totalSamples: 0,
     analyzedSamples: 0,
     inAnalysisSamples: 0,
+    pendingSamples: 0,
+    totalBudget: 0,
   });
 
   const navItems = [
@@ -114,12 +118,18 @@ function ResearcherDashboard() {
 
         setStats({
           totalProjects: projectsData.length,
+          totalBudget: projectsData.reduce(
+            (acc, project) => acc + project.budget,
+            0
+          ),
           activeProjects: projectsData.filter((p) => p.status === "Active")
             .length,
           completedProjects: projectsData.filter(
             (p) => p.status === "Completed"
           ).length,
           totalSamples: allSamples.length,
+          pendingSamples: allSamples.filter((s) => s.status === "Pending")
+            .length,
           analyzedSamples: allSamples.filter((s) => s.status === "Analyzed")
             .length,
           inAnalysisSamples: allSamples.filter(
@@ -145,7 +155,6 @@ function ResearcherDashboard() {
         const fullName = user.name || "Utilisateur";
         setUserName(fullName);
 
-        // Générer les initiales
         const initials = fullName
           .split(" ")
           .map((n) => n[0])
@@ -161,7 +170,6 @@ function ResearcherDashboard() {
   const formatDate = (dateString) =>
     dateString ? new Date(dateString).toLocaleDateString() : "N/A";
 
-  // Function to calculate days since start date
   const getDaysSinceStart = (dateString) => {
     if (!dateString) return "N/A";
     const startDate = new Date(dateString);
@@ -233,7 +241,7 @@ function ResearcherDashboard() {
             </div>
 
             {/* Statistics Section */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
               <div className="bg-white p-4 rounded-lg shadow-md border-l-4 border-blue-500 hover:shadow-lg transition-shadow">
                 <div className="flex items-center">
                   <div className="p-3 rounded-full bg-blue-100 text-blue-600 mr-4">
@@ -247,7 +255,6 @@ function ResearcherDashboard() {
                   </div>
                 </div>
               </div>
-
               <div className="bg-white p-4 rounded-lg shadow-md border-l-4 border-teal-500 hover:shadow-lg transition-shadow">
                 <div className="flex items-center">
                   <div className="p-3 rounded-full bg-teal-100 text-teal-600 mr-4">
@@ -261,7 +268,19 @@ function ResearcherDashboard() {
                   </div>
                 </div>
               </div>
-
+              <div className="bg-white p-4 rounded-lg shadow-md border-l-4 border-amber-500 hover:shadow-lg transition-shadow">
+                <div className="flex items-center">
+                  <div className="p-3 rounded-full bg-amber-100 text-amber-600 mr-4">
+                    <FaMoneyBillWave size={24} />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Total Budget</p>
+                    <p className="text-2xl font-bold text-gray-800">
+                      {stats.totalBudget}DH
+                    </p>
+                  </div>
+                </div>
+              </div>
               <div className="bg-white p-4 rounded-lg shadow-md border-l-4 border-green-500 hover:shadow-lg transition-shadow">
                 <div className="flex items-center">
                   <div className="p-3 rounded-full bg-green-100 text-green-600 mr-4">
@@ -275,7 +294,6 @@ function ResearcherDashboard() {
                   </div>
                 </div>
               </div>
-
               <div className="bg-white p-4 rounded-lg shadow-md border-l-4 border-purple-500 hover:shadow-lg transition-shadow">
                 <div className="flex items-center">
                   <div className="p-3 rounded-full bg-purple-100 text-purple-600 mr-4">
@@ -448,21 +466,28 @@ function ResearcherDashboard() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
                 <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 hover:shadow-md transition-shadow">
                   <div className="flex items-center">
-                    <div className="p-3 rounded-full bg-teal-100 text-teal-600 mr-4">
-                      <FaVial size={24} />
+                    <div className="p-3 rounded-full bg-yellow-100 text-yellow-600 mr-4">
+                      <FaHourglassHalf size={24} />
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Total Samples</p>
+                      <p className="text-sm text-gray-500">Pending Samples</p>
                       <p className="text-xl font-bold text-gray-800">
-                        {stats.totalSamples}
+                        {stats.pendingSamples}
                       </p>
                     </div>
                   </div>
                   <div className="mt-3 pl-14">
                     <div className="h-2 bg-gray-200 rounded-full">
                       <div
-                        className="h-2 bg-teal-500 rounded-full"
-                        style={{ width: "100%" }}
+                        className="h-2 bg-yellow-500 rounded-full"
+                        style={{
+                          width: `${
+                            stats.totalSamples > 0
+                              ? (stats.pendingSamples / stats.totalSamples) *
+                                100
+                              : 0
+                          }%`,
+                        }}
                       ></div>
                     </div>
                   </div>
