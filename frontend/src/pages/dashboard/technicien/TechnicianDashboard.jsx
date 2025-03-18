@@ -24,33 +24,33 @@ function TechnicianDashboard() {
   const [userName, setUserName] = useState("");
   const [userInitials, setUserInitials] = useState("");
   const [storageConditions, setStorageConditions] = useState([
-      "Room Temperature",
-      "Refrigerated (2-8°C)",
-      "Frozen (-20°C)",
-      "Ultra-frozen (-80°C)",
-      "Liquid Nitrogen",
-    ]);
-    const [sampleTypes, setSampleTypes] = useState([
-      "Blood",
-      "Tissue",
-      "DNA",
-      "RNA",
-      "Protein",
-      "Cell Culture",
-      "Serum",
-      "Plasma",
-      "Other",
-    ]);
-    const [units, setUnits] = useState([
-      "ml",
-      "µl",
-      "g",
-      "mg",
-      "µg",
-      "cells",
-      "pieces",
-    ]);
-  
+    "Room Temperature",
+    "Refrigerated (2-8°C)",
+    "Frozen (-20°C)",
+    "Ultra-frozen (-80°C)",
+    "Liquid Nitrogen",
+  ]);
+  const [sampleTypes, setSampleTypes] = useState([
+    "Blood",
+    "Tissue",
+    "DNA",
+    "RNA",
+    "Protein",
+    "Cell Culture",
+    "Serum",
+    "Plasma",
+    "Other",
+  ]);
+  const [units, setUnits] = useState([
+    "ml",
+    "µl",
+    "g",
+    "mg",
+    "µg",
+    "cells",
+    "pieces",
+  ]);
+
   const [stats, setStats] = useState({
     totalSamples: 0,
     pendingSamples: 0,
@@ -113,21 +113,18 @@ function TechnicianDashboard() {
       try {
         const API_URL = `${import.meta.env.VITE_API_URL}/samples`;
 
-        // Fetch samples data
         const { data: samplesData } = await axios.get(`${API_URL}/samples`, {
           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
         });
 
         setSamples(samplesData);
 
-        // Sort samples by collection date (most recent first)
         const sortedSamples = [...samplesData].sort(
           (a, b) =>
             new Date(b.collectionDate || 0) - new Date(a.collectionDate || 0)
         );
         setRecentSamples(sortedSamples.slice(0, 5));
 
-        // Calculate expiring soon samples (within 30 days)
         const today = new Date();
         const thirtyDaysFromNow = new Date();
         thirtyDaysFromNow.setDate(today.getDate() + 30);
@@ -138,7 +135,6 @@ function TechnicianDashboard() {
           return expirationDate > today && expirationDate <= thirtyDaysFromNow;
         }).length;
 
-        // Set stats
         setStats({
           totalSamples: samplesData.length,
           pendingSamples: samplesData.filter((s) => s.status === "Pending")
@@ -149,8 +145,6 @@ function TechnicianDashboard() {
           analyzedSamples: samplesData.filter((s) => s.status === "Analyzed")
             .length,
           expiringSync: expiringSoon,
-          maintenanceTasks: 0, // Add this when you have equipment schema
-          equipmentIssues: 0, // Add this when you have equipment schema
         });
       } catch (err) {
         setError("Error loading data.");
@@ -161,7 +155,7 @@ function TechnicianDashboard() {
     };
 
     loadData();
-  }, []); // Runs only once when the component mounts
+  }, []);
 
   useEffect(() => {
     const userData = localStorage.getItem("user");
@@ -172,7 +166,6 @@ function TechnicianDashboard() {
         const fullName = user.name || "Utilisateur";
         setUserName(fullName);
 
-        // Generate initials
         const initials = fullName
           .split(" ")
           .map((n) => n[0])
@@ -221,7 +214,6 @@ function TechnicianDashboard() {
         title="Laboratory Technician Portal"
         userName={userName || "Lab Technician"}
         userInitials={userInitials || "LT"}
-        notificationCount={stats.expiringSync}
         bgColor="bg-blue-700 backdrop-filter backdrop-blur-lg bg-opacity-90"
         hoverColor="text-blue-200"
       />
@@ -478,76 +470,6 @@ function TechnicianDashboard() {
                 })}
               </div>
             </div>
-
-            {/* Quick Actions */}
-            <div className="mb-6">
-              <h2 className="text-xl font-bold text-gray-800 mb-4">
-                Quick Actions
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <button
-                  onClick={() => navigate("/dashboard/technician/samples/new")}
-                  className="bg-white hover:bg-blue-50 p-4 rounded-lg shadow-md border border-blue-200 flex items-center justify-center transition-colors"
-                >
-                  <FaVial className="text-blue-600 mr-2" />
-                  <span className="text-blue-800 font-medium">
-                    Register New Sample
-                  </span>
-                </button>
-                <button
-                  onClick={() =>
-                    navigate("/dashboard/technician/samples/analysis")
-                  }
-                  className="bg-white hover:bg-green-50 p-4 rounded-lg shadow-md border border-green-200 flex items-center justify-center transition-colors"
-                >
-                  <FaFlask className="text-green-600 mr-2" />
-                  <span className="text-green-800 font-medium">
-                    Start Analysis
-                  </span>
-                </button>
-                <button
-                  onClick={() =>
-                    navigate("/dashboard/technician/equipment/status")
-                  }
-                  className="bg-white hover:bg-yellow-50 p-4 rounded-lg shadow-md border border-yellow-200 flex items-center justify-center transition-colors"
-                >
-                  <FaCog className="text-yellow-600 mr-2" />
-                  <span className="text-yellow-800 font-medium">
-                    Equipment Status
-                  </span>
-                </button>
-              </div>
-            </div>
-
-            {/* Expiring Samples Alert */}
-            {stats.expiringSync > 0 && (
-              <div className="mb-6">
-                <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg shadow">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0">
-                      <FaExclamationTriangle className="h-5 w-5 text-red-500" />
-                    </div>
-                    <div className="ml-3">
-                      <h3 className="text-red-800 font-medium">
-                        Attention Required
-                      </h3>
-                      <p className="text-red-700 text-sm">
-                        You have {stats.expiringSync} samples expiring within
-                        the next 30 days.
-                        <button
-                          onClick={() =>
-                            navigate("/dashboard/technician/samples/expiring")
-                          }
-                          className="ml-2 underline text-red-800 hover:text-red-900"
-                        >
-                          View samples
-                        </button>
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
           </main>
         </div>
       </div>
