@@ -73,9 +73,7 @@ router.put("/read-all", verifyToken, async (req, res) => {
   }
 });
 
-// Create a new notification (for internal use)
-// This endpoint would typically be called by your other APIs
-// when something happens that needs to notify a user
+// Create a new notification
 router.post("/create", async (req, res) => {
   try {
     const { userId, title, message, type, relatedProject, relatedSample } =
