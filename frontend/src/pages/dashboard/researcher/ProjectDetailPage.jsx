@@ -12,14 +12,10 @@ import {
   FaEdit,
   FaArrowLeft,
   FaFileDownload,
-  FaBriefcase,
   FaBuilding,
-  FaCheckCircle,
   FaExclamationTriangle,
   FaPlus,
   FaTrash,
-  FaEye,
-  FaUpload,
 } from "react-icons/fa";
 import Header from "../../../components/dashboard/Header";
 import Sidebar from "../../../components/dashboard/Sidebar";
@@ -37,7 +33,6 @@ function ProjectDetailPage() {
   const [selectedMemberId, setSelectedMemberId] = useState(null);
   const [selectedSampleId, setSelectedSampleId] = useState(null);
 
-  // Navigation items config (même que dans ProjectListPage)
   const navItems = [
     {
       id: "overview",
@@ -71,7 +66,6 @@ function ProjectDetailPage() {
     },
   ];
 
-  // Function pour déterminer la couleur du statut
   const getStatusColor = (status) => {
     switch (status) {
       case "Completed":
@@ -89,7 +83,6 @@ function ProjectDetailPage() {
     }
   };
 
-  // Function pour calculer la progression (basée sur les samples)
   const calculateProgress = (samples) => {
     const totalSamples = samples.length;
     const analyzedSamples = samples.filter(
@@ -102,38 +95,26 @@ function ProjectDetailPage() {
     }
   };
 
-  // Function pour déterminer la couleur de la progression
   const getProgressColor = (progress) => {
     if (progress >= 80) return "bg-green-500";
     if (progress >= 40) return "bg-blue-500";
     return "bg-yellow-500";
   };
 
-  // Function to show team member delete confirmation
   const confirmTeamMemberDelete = (memberId) => {
     setSelectedMemberId(memberId);
     setShowTeamMemberAlert(true);
   };
 
-  // Function to show sample delete confirmation
   const confirmSampleDelete = (sampleId) => {
     setSelectedSampleId(sampleId);
     setShowSampleAlert(true);
   };
 
-  // Function to navigate to upload report page
-  const navigateToUploadReport = (sampleId) => {
-    navigate(
-      `/dashboard/researcher/projects/${projectId}/samples/${sampleId}/upload-report`
-    );
-  };
-
-  // Function to handle team member deletion
   const removeTeamMember = async () => {
     try {
       const token = localStorage.getItem("token");
 
-      // Correct URL structure with projectId and memberId
       const response = await axios.delete(
         `${
           import.meta.env.VITE_API_URL
@@ -162,7 +143,6 @@ function ProjectDetailPage() {
     }
   };
 
-  // Function to handle sample deletion
   const removeSample = async () => {
     try {
       const response = await axios.delete(
@@ -193,7 +173,6 @@ function ProjectDetailPage() {
     }
   };
 
-  // Fetch project details
   useEffect(() => {
     const fetchProjectDetails = async () => {
       try {
@@ -233,8 +212,6 @@ function ProjectDetailPage() {
       </div>
     );
   }
-
-  // Calcul du progrès pour ce projet
   const progress = calculateProgress(project.samples);
 
   return (
@@ -621,7 +598,7 @@ function ProjectDetailPage() {
                                     navigate(
                                       `/dashboard/researcher/projects/samples/${sample._id}`
                                     )
-                                  } // Navigate to sample details page
+                                  }
                                   className="text-blue-600 hover:underline"
                                 >
                                   {sample.name}
