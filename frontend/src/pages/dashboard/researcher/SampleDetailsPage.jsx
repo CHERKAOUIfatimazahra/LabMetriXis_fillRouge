@@ -9,7 +9,6 @@ import {
   FaUser,
   FaFileAlt,
   FaArrowLeft,
-  FaClock,
   FaDownload,
   FaDna,
   FaCheckCircle,
@@ -27,7 +26,6 @@ function SampleDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Définition des statuts et de leurs couleurs associées
   const statuses = ["Pending", "In Analysis", "Analyzed"];
   const statusColors = {
     Pending: "text-yellow-500",
@@ -92,7 +90,6 @@ function SampleDetailsPage() {
     }
   };
 
-  // Ajout de la fonction handleViewReport manquante
   const handleViewReport = (sampleId) => {
     navigate(`/dashboard/researcher/samples/report/${sampleId}`);
   };
@@ -114,7 +111,6 @@ function SampleDetailsPage() {
         console.log("Response Data:", response.data);
         setSample(response.data);
 
-        // Placeholder data for technician and project
         setTechnician({
           name: "Dr. Jane Smith",
           position: "Senior Lab Technician",
@@ -370,7 +366,6 @@ function SampleDetailsPage() {
                               <button
                                 className="ml-2 px-3 py-1 bg-teal-600 text-white rounded-md hover:bg-teal-700 transition-colors flex items-center"
                                 onClick={() => {
-                                  // Handle the actual file download
                                   const fileUrl = `${
                                     import.meta.env.VITE_API_URL
                                   }/${sample.protocolFile.fileLocation.replace(
