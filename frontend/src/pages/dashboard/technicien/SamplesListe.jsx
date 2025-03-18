@@ -27,50 +27,47 @@ function SamplesList() {
   const [userName, setUserName] = useState("");
   const [userInitials, setUserInitials] = useState("");
 
-  // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [samplesPerPage] = useState(10);
   const [totalSamples, setTotalSamples] = useState(0);
 
-  // Search and filter state
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
 
-  // Available status options
   const statusOptions = ["All", "Analyzed", "In Analysis", "Pending"];
 
   const navItems = [
-      {
-        id: "overview",
-        label: "Overview",
-        icon: <FaClipboardList />,
-        navigator: "/dashboard/technician",
-      },
-      {
-        id: "samples",
-        label: "Samples",
-        icon: <FaVial />,
-        navigator: "/dashboard/technician/samples",
-      },
-      {
-        id: "equipment",
-        label: "Equipment",
-        icon: <FaCog />,
-        navigator: "/dashboard/technician/equipment",
-      },
-      {
-        id: "team",
-        label: "Lab Team",
-        icon: <FaUsers />,
-        navigator: "/dashboard/technician/team",
-      },
-      {
-        id: "profile",
-        label: "Profile",
-        icon: <FaUserCog />,
-        navigator: "/dashboard/technician/profile",
-      },
-    ];
+    {
+      id: "overview",
+      label: "Overview",
+      icon: <FaClipboardList />,
+      navigator: "/dashboard/technician",
+    },
+    {
+      id: "samples",
+      label: "Samples",
+      icon: <FaVial />,
+      navigator: "/dashboard/technician/samples",
+    },
+    {
+      id: "equipment",
+      label: "Equipment",
+      icon: <FaCog />,
+      navigator: "/dashboard/technician/equipment",
+    },
+    {
+      id: "team",
+      label: "Lab Team",
+      icon: <FaUsers />,
+      navigator: "/dashboard/technician/team",
+    },
+    {
+      id: "profile",
+      label: "Profile",
+      icon: <FaUserCog />,
+      navigator: "/dashboard/technician/profile",
+    },
+  ];
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -99,7 +96,6 @@ function SamplesList() {
 
         setSamples(response.data);
 
-        // Initially set filtered samples to all samples
         setFilteredSamples(response.data);
         setTotalSamples(response.data.length || 0);
       } catch (err) {
@@ -122,7 +118,6 @@ function SamplesList() {
         const fullName = user.name || "Utilisateur";
         setUserName(fullName);
 
-        // Generate initials
         const initials = fullName
           .split(" ")
           .map((n) => n[0])
@@ -135,41 +130,32 @@ function SamplesList() {
     }
   }, []);
 
-  // This effect runs whenever search term or status filter changes
   useEffect(() => {
-    // Apply filters to the samples
     searchAndFilterSamples();
-    // Reset to first page when filters change
     setCurrentPage(1);
   }, [searchTerm, statusFilter, samples]);
 
-  // Simple search and filter function
   const searchAndFilterSamples = () => {
     let results = [...samples];
 
-    // Filter by search term (sample name)
     if (searchTerm.trim() !== "") {
       results = results.filter((sample) =>
         sample.name.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
-    // Filter by status
     if (statusFilter !== "All") {
       results = results.filter((sample) => sample.status === statusFilter);
     }
 
-    // Update filtered samples and total count
     setFilteredSamples(results);
     setTotalSamples(results.length);
   };
 
-  // Handle search input change
   const handleSearchChange = (event) => {
     setSearchTerm(event.target.value);
   };
 
-  // Handle status filter change
   const handleStatusFilterChange = (event) => {
     setStatusFilter(event.target.value);
   };
@@ -177,7 +163,6 @@ function SamplesList() {
   const formatDate = (dateString) =>
     dateString ? new Date(dateString).toLocaleDateString() : "N/A";
 
-  // Get current samples for pagination
   const indexOfLastSample = currentPage * samplesPerPage;
   const indexOfFirstSample = indexOfLastSample - samplesPerPage;
   const currentSamples = filteredSamples.slice(
@@ -185,15 +170,12 @@ function SamplesList() {
     indexOfLastSample
   );
 
-  // Handle pagination
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
-  // Get total pages
   const totalPages = Math.ceil(totalSamples / samplesPerPage);
 
-  // Create pagination array
   const getPaginationRange = () => {
-    const delta = 2; // Number of pages before and after current page
+    const delta = 2;
     const range = [];
 
     for (
@@ -204,13 +186,11 @@ function SamplesList() {
       range.push(i);
     }
 
-    // Add first page if not in range
     if (range[0] > 1) {
       range.unshift(1);
       if (range[1] > 2) range.splice(1, 0, "...");
     }
 
-    // Add last page if not in range
     if (range[range.length - 1] < totalPages) {
       if (range[range.length - 1] < totalPages - 1) range.push("...");
       range.push(totalPages);
@@ -219,7 +199,6 @@ function SamplesList() {
     return range;
   };
 
-  // Handle view sample details
   const viewSampleDetails = (sampleId) => {
     navigate(`/dashboard/technician/samples/${sampleId}`);
   };
