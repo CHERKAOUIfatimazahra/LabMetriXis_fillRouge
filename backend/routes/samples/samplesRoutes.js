@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { verifyToken } = require("../../middleware/authMiddleware");
+const { isTechnician } = require("../../middleware/roleMiddleware");
 const sampleController = require("../../controllers/sampleController");
 
 const multer = require("multer");
