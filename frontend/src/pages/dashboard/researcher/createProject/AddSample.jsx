@@ -10,6 +10,12 @@ import {
   FaFlask,
   FaUpload,
   FaVial,
+  FaExclamationTriangle,
+  FaCheckCircle,
+  FaFilePdf,
+  FaFileWord,
+  FaFileExcel,
+  FaInfo,
 } from "react-icons/fa";
 import axios from "axios";
 
@@ -48,11 +54,17 @@ function AddSample() {
     "pieces",
   ]);
 
-  // Initial form data state
+  const [alert, setAlert] = useState({
+    show: false,
+    message: "",
+    type: "",
+  });
+
+  const [errors, setErrors] = useState({});
+
   const [formData, setFormData] = useState({
     samples: [],
 
-    // New samples properties aligned with schema
     currentSample: {
       name: "",
       description: "",
@@ -68,7 +80,56 @@ function AddSample() {
     },
   });
 
-  // Handle sample form changes
+  const validateSample = (sample) => {
+    const newErrors = {};
+
+    if (!sample.name || sample.name.trim() === "") {
+      newErrors.name = "Le nom de l'échantillon est requis";
+    }
+
+    if (!sample.description || sample.description.trim() === "") {
+      newErrors.description = "La description est requise";
+    }
+
+    if (!sample.type) {
+      newErrors.type = "Le type d'échantillon est requis";
+    }
+
+    if (!sample.quantity) {
+      newErrors.quantity = "La quantité est requise";
+    } else if (isNaN(sample.quantity) || Number(sample.quantity) <= 0) {
+      newErrors.quantity = "La quantité doit être un nombre positif";
+    }
+
+    if (!sample.unit) {
+      newErrors.unit = "L'unité est requise";
+    }
+
+    if (!sample.technicianResponsible) {
+      newErrors.technicianResponsible = "Un technicien responsable est requis";
+    }
+
+    if (!sample.collectionDate) {
+      newErrors.collectionDate = "La date de collecte est requise";
+    }
+
+    if (!sample.protocolFile) {
+      newErrors.protocolFile = "Un fichier de protocole est requis";
+    }
+
+    if (sample.collectionDate && sample.expirationDate) {
+      const collectionDate = new Date(sample.collectionDate);
+      const expirationDate = new Date(sample.expirationDate);
+
+      if (expirationDate < collectionDate) {
+        newErrors.expirationDate =
+          "La date d'expiration doit être postérieure à la date de collecte";
+      }
+    }
+
+    return newErrors;
+  };
+
   const handleSampleChange = (e) => {
     const { name, value, type, files } = e.target;
 
@@ -81,6 +142,13 @@ function AddSample() {
         },
       });
       setProtocolFile(files[0]);
+
+      if (files[0] && errors.protocolFile) {
+        setErrors({
+          ...errors,
+          protocolFile: null,
+        });
+      }
     } else {
       setFormData({
         ...formData,
@@ -89,35 +157,44 @@ function AddSample() {
           [name]: value,
         },
       });
+
+      if (errors[name]) {
+        setErrors({
+          ...errors,
+          [name]: null,
+        });
+      }
     }
   };
 
-  // Handle adding a new sample
   const handleAddSample = () => {
-    if (
-      !formData.currentSample.name ||
-      !formData.currentSample.description ||
-      !formData.currentSample.type ||
-      !formData.currentSample.quantity ||
-      !formData.currentSample.unit ||
-      !formData.currentSample.collectionDate ||
-      !formData.currentSample.technicianResponsible
-    ) {
-      alert("Veuillez remplir les champs obligatoires de l'échantillon");
+    const validationErrors = validateSample(formData.currentSample);
+
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+
+      setAlert({
+        show: true,
+        message: "Veuillez corriger les erreurs avant d'ajouter l'échantillon",
+        type: "error",
+      });
+
+      setTimeout(() => {
+        setAlert({ show: false, message: "", type: "" });
+      }, 5000);
+
       return;
     }
 
-    // Add current sample to samples array
     setFormData({
       ...formData,
       samples: [
         ...formData.samples,
         {
           ...formData.currentSample,
-          id: Date.now(), // generate a temporary unique ID
+          id: Date.now(),
         },
       ],
-      // Reset current sample form
       currentSample: {
         name: "",
         description: "",
@@ -133,19 +210,37 @@ function AddSample() {
       },
     });
 
-    // Reset protocol file state
+    setAlert({
+      show: true,
+      message: "Échantillon ajouté avec succès à la liste",
+      type: "success",
+    });
+
+    setTimeout(() => {
+      setAlert({ show: false, message: "", type: "" });
+    }, 5000);
+
+    setErrors({});
     setProtocolFile(null);
   };
 
-  // Handle removing a sample
   const handleRemoveSample = (sampleId) => {
     setFormData({
       ...formData,
       samples: formData.samples.filter((sample) => sample.id !== sampleId),
     });
+
+    setAlert({
+      show: true,
+      message: "Échantillon retiré de la liste",
+      type: "info",
+    });
+
+    setTimeout(() => {
+      setAlert({ show: false, message: "", type: "" });
+    }, 5000);
   };
 
-  // Fetch project data and team members
   useEffect(() => {
     const fetchProject = async () => {
       try {
@@ -168,7 +263,7 @@ function AddSample() {
       try {
         const token = localStorage.getItem("token");
         const response = await axios.get(
-          `${import.meta.env.VITE_API_URL}/users`,
+          `${import.meta.env.VITE_API_URL}/project/available-technicians`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -187,7 +282,6 @@ function AddSample() {
     }
   }, [projectId]);
 
-  // get user id of the technicianResponsible from database
   useEffect(() => {
     const fetchTeamMembers = async () => {
       try {
@@ -200,7 +294,7 @@ function AddSample() {
             },
           }
         );
-        console.log(response.data);
+        // console.log(response.data);
         setAvailableTeamMembers(response.data || []);
       } catch (error) {
         console.error("Error fetching team members:", error);
@@ -209,12 +303,20 @@ function AddSample() {
     fetchTeamMembers();
   }, []);
 
-  // Update handleSubmit to send samples to the backend
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (formData.samples.length === 0) {
-      alert("Veuillez ajouter au moins un échantillon");
+      setAlert({
+        show: true,
+        message: "Veuillez ajouter au moins un échantillon",
+        type: "warning",
+      });
+
+      setTimeout(() => {
+        setAlert({ show: false, message: "", type: "" });
+      }, 5000);
+
       return;
     }
 
@@ -222,7 +324,6 @@ function AddSample() {
       const token = localStorage.getItem("token");
 
       const samplePromises = formData.samples.map(async (sample) => {
-        // Create a regular JSON object instead of FormData
         const sampleData = {
           name: sample.name,
           description: sample.description,
@@ -234,16 +335,14 @@ function AddSample() {
           technicianResponsible: sample.technicianResponsible,
           status: sample.status,
           identification: `${sample.type}-${Date.now()}`,
+          project: projectId,
         };
 
-        // Add optional fields only if they exist
         if (sample.expirationDate) {
           sampleData.expirationDate = sample.expirationDate;
         }
 
-        // If you need to handle file uploads, you'll still need FormData
         if (sample.protocolFile) {
-          // Create FormData for file upload
           const fileData = new FormData();
           fileData.append("protocolFile", sample.protocolFile);
           fileData.append("sampleData", JSON.stringify(sampleData));
@@ -260,18 +359,48 @@ function AddSample() {
               },
             }
           );
+        } else {
+          return axios.post(
+            `${
+              import.meta.env.VITE_API_URL
+            }/project/projects/${projectId}/samples`,
+            sampleData,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+              },
+            }
+          );
         }
       });
 
       await Promise.all(samplePromises);
-      console.log("Samples added successfully!");
-      navigate(`/dashboard/researcher/projects`);
+
+      setAlert({
+        show: true,
+        message: "Échantillons ajoutés avec succès au projet!",
+        type: "success",
+      });
+
+      setTimeout(() => {
+        navigate(`/dashboard/researcher/projects`);
+      }, 2000);
     } catch (error) {
       console.error("Error adding samples:", error);
-      alert("Échec lors de l'ajout des échantillons. Veuillez réessayer.");
+
+      setAlert({
+        show: true,
+        message: "Échec lors de l'ajout des échantillons. Veuillez réessayer.",
+        type: "error",
+      });
+
+      setTimeout(() => {
+        setAlert({ show: false, message: "", type: "" });
+      }, 5000);
     }
   };
-  // Navigation items config
+
   const navItems = [
     {
       id: "overview",
@@ -305,36 +434,47 @@ function AddSample() {
     },
   ];
 
-  // Quick stats config
-  const quickStats = [
-    {
-      id: 1,
-      label: "Projets actifs",
-      value: "8",
-      color: "teal",
-    },
-    {
-      id: 2,
-      label: "Échantillons",
-      value: "126",
-      color: "indigo",
-    },
-    {
-      id: 3,
-      label: "Publications",
-      value: "12",
-      color: "green",
-    },
-    {
-      id: 4,
-      label: "Analyses en attente",
-      value: "7",
-      color: "purple",
-    },
-  ];
+  const AlertComponent = ({ show, message, type }) => {
+    if (!show) return null;
+
+    const alertStyles = {
+      success: "bg-green-100 border-green-500 text-green-700",
+      error: "bg-red-100 border-red-500 text-red-700",
+      warning: "bg-yellow-100 border-yellow-500 text-yellow-700",
+      info: "bg-blue-100 border-blue-500 text-blue-700",
+    };
+
+    const alertIcons = {
+      success: <FaCheckCircle className="h-5 w-5 text-green-500" />,
+      error: <FaExclamationTriangle className="h-5 w-5 text-red-500" />,
+      warning: <FaExclamationTriangle className="h-5 w-5 text-yellow-500" />,
+      info: <FaInfo className="h-5 w-5 text-blue-500" />,
+    };
+
+    return (
+      <div
+        className={`fixed top-4 right-4 z-50 p-4 rounded-lg border shadow-lg flex items-center ${alertStyles[type]}`}
+      >
+        <div className="mr-3">{alertIcons[type]}</div>
+        <div className="text-sm font-medium">{message}</div>
+        <button
+          onClick={() => setAlert({ show: false, message: "", type: "" })}
+          className="ml-4 text-gray-500 hover:text-gray-800 focus:outline-none"
+        >
+          ×
+        </button>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Alert Component */}
+      <AlertComponent
+        show={alert.show}
+        message={alert.message}
+        type={alert.type}
+      />
       {/* Header Component */}
       <Header
         title="LabMetriXis - Recherche Scientifique"
@@ -352,7 +492,6 @@ function AddSample() {
             activeTab={activeTab}
             setActiveTab={setActiveTab}
             navItems={navItems}
-            quickStats={quickStats}
             accentColor="teal"
           />
 
@@ -383,9 +522,17 @@ function AddSample() {
                           name="name"
                           value={formData.currentSample.name}
                           onChange={handleSampleChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+                          className={`w-full px-3 py-2 border ${
+                            errors.name ? "border-red-500" : "border-gray-300"
+                          } rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500`}
                           placeholder="Nom unique de l'échantillon"
                         />
+                        {errors.name && (
+                          <p className="mt-1 text-sm text-red-500 flex items-center">
+                            <FaExclamationTriangle className="mr-1" />{" "}
+                            {errors.name}
+                          </p>
+                        )}
                       </div>
 
                       <div className="lg:col-span-2">
@@ -397,9 +544,19 @@ function AddSample() {
                           name="description"
                           value={formData.currentSample.description}
                           onChange={handleSampleChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+                          className={`w-full px-3 py-2 border ${
+                            errors.description
+                              ? "border-red-500"
+                              : "border-gray-300"
+                          } rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500`}
                           placeholder="Description courte de l'échantillon"
                         />
+                        {errors.description && (
+                          <p className="mt-1 text-sm text-red-500 flex items-center">
+                            <FaExclamationTriangle className="mr-1" />{" "}
+                            {errors.description}
+                          </p>
+                        )}
                       </div>
 
                       <div>
@@ -410,7 +567,9 @@ function AddSample() {
                           name="type"
                           value={formData.currentSample.type}
                           onChange={handleSampleChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+                          className={`w-full px-3 py-2 border ${
+                            errors.type ? "border-red-500" : "border-gray-300"
+                          } rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500`}
                         >
                           <option value="">Sélectionner un type</option>
                           {sampleTypes.map((type, idx) => (
@@ -419,6 +578,12 @@ function AddSample() {
                             </option>
                           ))}
                         </select>
+                        {errors.type && (
+                          <p className="mt-1 text-sm text-red-500 flex items-center">
+                            <FaExclamationTriangle className="mr-1" />{" "}
+                            {errors.type}
+                          </p>
+                        )}
                       </div>
 
                       <div>
@@ -430,9 +595,19 @@ function AddSample() {
                           name="quantity"
                           value={formData.currentSample.quantity}
                           onChange={handleSampleChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+                          className={`w-full px-3 py-2 border ${
+                            errors.quantity
+                              ? "border-red-500"
+                              : "border-gray-300"
+                          } rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500`}
                           placeholder="Ex: 5, 10, 25..."
                         />
+                        {errors.quantity && (
+                          <p className="mt-1 text-sm text-red-500 flex items-center">
+                            <FaExclamationTriangle className="mr-1" />{" "}
+                            {errors.quantity}
+                          </p>
+                        )}
                       </div>
 
                       <div>
@@ -443,7 +618,9 @@ function AddSample() {
                           name="unit"
                           value={formData.currentSample.unit}
                           onChange={handleSampleChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+                          className={`w-full px-3 py-2 border ${
+                            errors.unit ? "border-red-500" : "border-gray-300"
+                          } rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500`}
                         >
                           <option value="">Sélectionner une unité</option>
                           {units.map((unit, idx) => (
@@ -452,6 +629,12 @@ function AddSample() {
                             </option>
                           ))}
                         </select>
+                        {errors.unit && (
+                          <p className="mt-1 text-sm text-red-500 flex items-center">
+                            <FaExclamationTriangle className="mr-1" />{" "}
+                            {errors.unit}
+                          </p>
+                        )}
                       </div>
 
                       <div>
@@ -462,7 +645,11 @@ function AddSample() {
                           name="technicianResponsible"
                           value={formData.currentSample.technicianResponsible}
                           onChange={handleSampleChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+                          className={`w-full px-3 py-2 border ${
+                            errors.technicianResponsible
+                              ? "border-red-500"
+                              : "border-gray-300"
+                          } rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500`}
                         >
                           <option value="">Sélectionner un technicien</option>
                           {availableTeamMembers.map((tech) => (
@@ -473,6 +660,12 @@ function AddSample() {
                             </option>
                           ))}
                         </select>
+                        {errors.technicianResponsible && (
+                          <p className="mt-1 text-sm text-red-500 flex items-center">
+                            <FaExclamationTriangle className="mr-1" />{" "}
+                            {errors.technicianResponsible}
+                          </p>
+                        )}
                       </div>
 
                       <div>
@@ -484,8 +677,18 @@ function AddSample() {
                           name="collectionDate"
                           value={formData.currentSample.collectionDate}
                           onChange={handleSampleChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+                          className={`w-full px-3 py-2 border ${
+                            errors.collectionDate
+                              ? "border-red-500"
+                              : "border-gray-300"
+                          } rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500`}
                         />
+                        {errors.collectionDate && (
+                          <p className="mt-1 text-sm text-red-500 flex items-center">
+                            <FaExclamationTriangle className="mr-1" />{" "}
+                            {errors.collectionDate}
+                          </p>
+                        )}
                       </div>
 
                       <div>
@@ -497,8 +700,18 @@ function AddSample() {
                           name="expirationDate"
                           value={formData.currentSample.expirationDate}
                           onChange={handleSampleChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+                          className={`w-full px-3 py-2 border ${
+                            errors.expirationDate
+                              ? "border-red-500"
+                              : "border-gray-300"
+                          } rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500`}
                         />
+                        {errors.expirationDate && (
+                          <p className="mt-1 text-sm text-red-500 flex items-center">
+                            <FaExclamationTriangle className="mr-1" />{" "}
+                            {errors.expirationDate}
+                          </p>
+                        )}
                       </div>
 
                       <div>
@@ -659,6 +872,7 @@ function AddSample() {
                   <button
                     type="submit"
                     className="px-6 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700"
+                    disabled={formData.samples.length === 0}
                   >
                     Ajouter les échantillons au projet
                   </button>

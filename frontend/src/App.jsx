@@ -20,10 +20,16 @@ import ProjectCreatePage from "./pages/dashboard/researcher/createProject/Projec
 import AddSample from "./pages/dashboard/researcher/createProject/AddSample";
 import ProjectListPage from "./pages/dashboard/researcher/ProjectListPage";
 import ProjectDetailPage from "./pages/dashboard/researcher/ProjectDetailPage";
-import ProjectEditPage from "./pages/dashboard/researcher/ProjectEditPage";
+import CreatePublicationPage from "./pages/dashboard/researcher/CreatePublicationPage";
+import UpdateProjectPage from "./pages/dashboard/researcher/updateProject/UpdateProjectPage";
+import SampleDetailsPage from "./pages/dashboard/researcher/SampleDetailsPage";
+import UpdateSample from "./pages/dashboard/researcher/updateProject/UpdateSample";
 
 // dashboard technicien
 import TechnicianDashboard from "./pages/dashboard/technicien/TechnicianDashboard";
+import SamplesListe from "./pages/dashboard/technicien/SamplesListe";
+import SampleDetail from "./pages/dashboard/technicien/SampleDetail";
+import TechnicianReportPage from "./pages/dashboard/technicien/TechnicianReportPage";
 
 // Pages publiques
 import HomePage from "./pages/HomePage";
@@ -136,12 +142,33 @@ function App() {
           }
         />
 
-        {/* édite */}
+        <Route
+          path="/dashboard/researcher/projects/:projectId/create-publication"
+          element={<CreatePublicationPage />}
+        />
         <Route
           path="/dashboard/researcher/projects/:projectId/edit"
           element={
             <PrivateRoute allowedRoles={["chercheur", "admin"]}>
-              <ProjectEditPage />
+              <UpdateProjectPage />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/dashboard/researcher/projects/samples/:sampleId"
+          element={
+            <PrivateRoute allowedRoles={["chercheur", "admin"]}>
+              <SampleDetailsPage />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/dashboard/researcher/projects/:projectId/samples/:sampleId/edit"
+          element={
+            <PrivateRoute allowedRoles={["chercheur", "admin"]}>
+              <UpdateSample />
             </PrivateRoute>
           }
         />
@@ -152,6 +179,32 @@ function App() {
           element={
             <PrivateRoute allowedRoles={["technicien", "admin"]}>
               <TechnicianDashboard />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/dashboard/technician/samples"
+          element={
+            <PrivateRoute allowedRoles={["technicien", "admin"]}>
+              <SamplesListe />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/dashboard/technician/samples/:sampleId"
+          element={
+            <PrivateRoute allowedRoles={["technicien", "admin"]}>
+              <SampleDetail />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/dashboard/technician/samples/:sampleId/report"
+          element={
+            <PrivateRoute allowedRoles={["technicien", "admin"]}>
+              <TechnicianReportPage />
             </PrivateRoute>
           }
         />

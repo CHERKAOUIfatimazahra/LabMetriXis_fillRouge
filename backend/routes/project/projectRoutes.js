@@ -11,7 +11,7 @@ const storage = multer.diskStorage({
     cb(null, "uploads/");
   },
   filename: function (req, file, cb) {
-    cb(null, Date.now() + "-" + file.originalname);
+    cb(null, Date.now() + "-" + file.originalname); 
   },
 });
 const upload = multer({ storage: storage });
@@ -67,6 +67,14 @@ router.get(
   projectController.getProjectById
 );
 
+// update project
+router.put(
+  "/projects/:projectId",
+  verifyToken,
+  isChercheur,
+  projectController.updateProject
+);
+
 // delete sample
 router.delete(
   "/projects/:projectId/samples/:sampleId",
@@ -82,5 +90,60 @@ router.delete(
   isChercheur,
   projectController.deleteProjectByRole
 );
+
+// delete memebre from project by team leader
+router.delete(
+  "/projects/:projectId/team-members/:userId",
+  verifyToken,
+  isChercheur,
+  userController.deleteMemberFromProject
+);
+
+// Final report routes
+router.patch(
+  "/projects/:projectId/final-report-draft",
+  verifyToken,
+  isChercheur,
+  projectController.saveFinalReportDraft
+);
+
+router.patch(
+  "/projects/:projectId/final-report",
+  verifyToken,
+  isChercheur,
+  projectController.publishFinalReport
+);
+
+router.get(
+  "/projects/:projectId/report-versions",
+  verifyToken,
+  isChercheur,
+  projectController.getReportVersions
+);
+
+router.get(
+  "/projects/:projectId/report-versions/:versionId",
+  verifyToken,
+  isChercheur,
+  projectController.getReportVersion
+);
+
+router.post(
+  "/projects/:projectId/upload-report",
+  verifyToken,
+  isChercheur,
+  projectController.uploadReport
+);
+
+// get sample by id
+router.get("/projects/samples/:sampleId",
+  verifyToken,
+  projectController.getSampleById);
+
+// update sample by id
+router.put("/projects/samples/:sampleId",
+  verifyToken,upload.single('protocolFile'),
+  projectController.updateSample);
+
 
 module.exports = router;

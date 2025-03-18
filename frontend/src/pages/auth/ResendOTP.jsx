@@ -33,7 +33,6 @@ function ResendOTP() {
       setSuccess(response.data.message || "OTP has been sent to your email");
       localStorage.setItem("email", email);
 
-      // Redirect to OTP verification page after 2 seconds
       setTimeout(() => {
         navigate("/otp");
       }, 2000);

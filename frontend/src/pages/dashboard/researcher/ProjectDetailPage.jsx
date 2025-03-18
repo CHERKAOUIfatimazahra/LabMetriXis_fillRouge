@@ -12,10 +12,10 @@ import {
   FaEdit,
   FaArrowLeft,
   FaFileDownload,
-  FaBriefcase,
   FaBuilding,
-  FaCheckCircle,
   FaExclamationTriangle,
+  FaPlus,
+  FaTrash,
 } from "react-icons/fa";
 import Header from "../../../components/dashboard/Header";
 import Sidebar from "../../../components/dashboard/Sidebar";
@@ -28,8 +28,11 @@ function ProjectDetailPage() {
   const [project, setProject] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showTeamMemberAlert, setShowTeamMemberAlert] = useState(false);
+  const [showSampleAlert, setShowSampleAlert] = useState(false);
+  const [selectedMemberId, setSelectedMemberId] = useState(null);
+  const [selectedSampleId, setSelectedSampleId] = useState(null);
 
-  // Navigation items config (même que dans ProjectListPage)
   const navItems = [
     {
       id: "overview",
@@ -63,7 +66,6 @@ function ProjectDetailPage() {
     },
   ];
 
-  // Function pour déterminer la couleur du statut
   const getStatusColor = (status) => {
     switch (status) {
       case "Completed":
@@ -81,28 +83,96 @@ function ProjectDetailPage() {
     }
   };
 
-  // Function pour calculer la progression (basée sur les dates)
-  const calculateProgress = (startDate, deadline) => {
-    if (!startDate || !deadline) return 0;
-
-    const start = new Date(startDate).getTime();
-    const end = new Date(deadline).getTime();
-    const now = new Date().getTime();
-
-    if (now <= start) return 0;
-    if (now >= end) return 100;
-
-    return Math.round(((now - start) / (end - start)) * 100);
+  const calculateProgress = (samples) => {
+    const totalSamples = samples.length;
+    const analyzedSamples = samples.filter(
+      (sample) => sample.status === "Analyzed"
+    ).length;
+    if (totalSamples > 0) {
+      return (analyzedSamples / totalSamples) * 100;
+    } else {
+      return 0;
+    }
   };
 
-  // Function pour déterminer la couleur de la progression
   const getProgressColor = (progress) => {
     if (progress >= 80) return "bg-green-500";
     if (progress >= 40) return "bg-blue-500";
     return "bg-yellow-500";
   };
 
-  // Fetch project details
+  const confirmTeamMemberDelete = (memberId) => {
+    setSelectedMemberId(memberId);
+    setShowTeamMemberAlert(true);
+  };
+
+  const confirmSampleDelete = (sampleId) => {
+    setSelectedSampleId(sampleId);
+    setShowSampleAlert(true);
+  };
+
+  const removeTeamMember = async () => {
+    try {
+      const token = localStorage.getItem("token");
+
+      const response = await axios.delete(
+        `${
+          import.meta.env.VITE_API_URL
+        }/project/projects/${projectId}/team-members/${selectedMemberId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (response.data.project) {
+        setProject(response.data.project);
+        toast.success("Membre supprimé avec succès");
+      }
+    } catch (error) {
+      console.error("Error removing team member:", error);
+      if (error.response?.status === 403) {
+        toast.error("Seul le chef d'équipe peut supprimer des membres");
+      } else {
+        console.error("Erreur lors de la suppression du membre");
+      }
+    } finally {
+      setShowTeamMemberAlert(false);
+      setSelectedMemberId(null);
+    }
+  };
+
+  const removeSample = async () => {
+    try {
+      const response = await axios.delete(
+        `${
+          import.meta.env.VITE_API_URL
+        }/project/projects/${projectId}/samples/${selectedSampleId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+
+      setProject(response.data.project);
+      toast.success("Échantillon supprimé avec succès");
+    } catch (error) {
+      console.error("Error removing sample:", error);
+      if (error.response?.status === 403) {
+        toast.error(
+          "Vous n'avez pas les droits nécessaires pour supprimer cet échantillon"
+        );
+      } else {
+        toast.error("Erreur lors de la suppression de l'échantillon");
+      }
+    } finally {
+      setShowSampleAlert(false);
+      setSelectedSampleId(null);
+    }
+  };
+
   useEffect(() => {
     const fetchProjectDetails = async () => {
       try {
@@ -117,6 +187,7 @@ function ProjectDetailPage() {
         );
 
         setProject(response.data.project);
+        // console.log(response.data);
         setIsLoading(false);
       } catch (err) {
         console.error("Error fetching project details:", err);
@@ -141,47 +212,72 @@ function ProjectDetailPage() {
       </div>
     );
   }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <FaExclamationTriangle className="mx-auto text-red-500 text-5xl" />
-          <p className="mt-4 text-red-600 font-medium">{error}</p>
-          <button
-            onClick={() => navigate("/dashboard/researcher/projects")}
-            className="mt-4 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
-          >
-            Retour à la liste des projets
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (!project) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <FaExclamationTriangle className="mx-auto text-yellow-500 text-5xl" />
-          <p className="mt-4 text-gray-700 font-medium">Projet non trouvé</p>
-          <button
-            onClick={() => navigate("/dashboard/researcher/projects")}
-            className="mt-4 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
-          >
-            Retour à la liste des projets
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // Calcul du progrès pour ce projet
-  const progress =
-    project.progress || calculateProgress(project.startDate, project.deadline);
+  const progress = calculateProgress(project.samples);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      {/* Delete Team Member Confirmation Alert */}
+      {showTeamMemberAlert && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md mx-4">
+            <div className="flex items-center text-red-500 mb-4">
+              <FaExclamationTriangle className="mr-2 text-xl" />
+              <h3 className="text-lg font-bold">Confirmation de suppression</h3>
+            </div>
+            <p className="mb-6">
+              Êtes-vous sûr de vouloir supprimer ce membre de l'équipe ? Cette
+              action est irréversible.
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowTeamMemberAlert(false)}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                disabled={isLoading}
+              >
+                Annuler
+              </button>
+              <button
+                onClick={removeTeamMember}
+                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                disabled={isLoading}
+              >
+                {isLoading ? "Suppression..." : "Supprimer"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Sample Confirmation Alert */}
+      {showSampleAlert && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md mx-4">
+            <div className="flex items-center text-red-500 mb-4">
+              <FaExclamationTriangle className="mr-2 text-xl" />
+              <h3 className="text-lg font-bold">Confirmation de suppression</h3>
+            </div>
+            <p className="mb-6">
+              Êtes-vous sûr de vouloir supprimer cet échantillon ? Cette action
+              est irréversible.
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowSampleAlert(false)}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={removeSample}
+                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+              >
+                Supprimer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Header
         title="Research Lab Portal"
         userName="Dr. Roberts"
@@ -240,7 +336,7 @@ function ProjectDetailPage() {
                     <button
                       onClick={() =>
                         navigate(
-                          `/dashboard/researcher/projects/${project._id}/create-report`
+                          `/dashboard/researcher/projects/${projectId}/create-publication`
                         )
                       }
                       className="flex items-center px-4 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition-colors shadow-md"
@@ -248,18 +344,12 @@ function ProjectDetailPage() {
                       <FaFileAlt className="mr-2" />
                       Créer un rapport
                     </button>
-                    {project.finalReport && project.finalReport.content && (
-                      <button className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors shadow-md">
-                        <FaFileDownload className="mr-2" />
-                        Télécharger le rapport
-                      </button>
-                    )}
                   </div>
 
                   <button
                     onClick={() =>
                       navigate(
-                        `/dashboard/researcher/projects/${project._id}/edit`
+                        `/dashboard/researcher/projects/${projectId}/edit`
                       )
                     }
                     className="flex items-center px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors shadow-md"
@@ -267,12 +357,6 @@ function ProjectDetailPage() {
                     <FaEdit className="mr-2" />
                     Modifier
                   </button>
-                  {project.finalReport && project.finalReport.content && (
-                    <button className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors shadow-md">
-                      <FaFileDownload className="mr-2" />
-                      Télécharger le rapport
-                    </button>
-                  )}
                 </div>
               </div>
             </div>
@@ -377,9 +461,11 @@ function ProjectDetailPage() {
             {/* Équipe et échantillons */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
               <div className="bg-white rounded-lg shadow-lg border border-gray-100 p-6">
-                <h2 className="text-xl font-bold text-teal-800 mb-4 border-b pb-2">
-                  Équipe de recherche
-                </h2>
+                <div className="flex justify-between items-center mb-4 border-b pb-2">
+                  <h2 className="text-xl font-bold text-teal-800">
+                    Équipe de recherche
+                  </h2>
+                </div>
 
                 {project.teamLead && (
                   <div className="mb-6">
@@ -414,24 +500,41 @@ function ProjectDetailPage() {
                 </h3>
                 {project.teamMembers && project.teamMembers.length > 0 ? (
                   <ul className="space-y-2">
-                    {project.teamMembers.map((member, index) => (
-                      <li key={index} className="flex items-center">
-                        <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-xs font-semibold">
-                          {member.user?.name
-                            ? member.user.name
-                                .split(" ")
-                                .map((n) => n[0])
-                                .join("")
-                            : "M"}
-                        </div>
-                        <div className="ml-3">
-                          <div className="text-sm font-medium">
-                            {member.user?.name || "Membre d'équipe"}
+                    {project.teamMembers.map((teamMember, index) => (
+                      <li
+                        key={index}
+                        className="flex items-center justify-between"
+                      >
+                        <div className="flex items-center">
+                          <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-xs font-semibold">
+                            {teamMember.name
+                              ? teamMember.name.split(" ")[0][0] +
+                                (teamMember.name.split(" ")[1]
+                                  ? teamMember.name.split(" ")[1][0]
+                                  : "")
+                              : "M"}
                           </div>
-                          <div className="text-xs text-gray-500">
-                            {member.role || "Rôle non spécifié"}
+                          <div className="ml-3">
+                            <div className="text-sm font-medium">
+                              {teamMember.name || "Membre d'équipe"}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {teamMember.role || "Rôle non spécifié"}
+                              {teamMember.institution &&
+                                ` - ${teamMember.institution}`}
+                            </div>
                           </div>
                         </div>
+
+                        <button
+                          onClick={() =>
+                            confirmTeamMemberDelete(teamMember._id)
+                          }
+                          className="text-red-500 hover:bg-red-50 p-2 rounded-full"
+                          title="Supprimer le membre"
+                        >
+                          <FaTrash />
+                        </button>
                       </li>
                     ))}
                   </ul>
@@ -443,8 +546,8 @@ function ProjectDetailPage() {
               </div>
 
               <div className="bg-white rounded-lg shadow-lg border border-gray-100 p-6">
-                <h2 className="text-xl font-bold text-teal-800 mb-4 border-b pb-2">
-                  <div className="flex items-center">
+                <div className="flex justify-between items-center mb-4 border-b pb-2">
+                  <h2 className="text-xl font-bold text-teal-800 flex items-center">
                     <FaFlask className="mr-2" />
                     Échantillons
                     {project.samples && project.samples.length > 0 && (
@@ -452,8 +555,19 @@ function ProjectDetailPage() {
                         {project.samples.length}
                       </span>
                     )}
-                  </div>
-                </h2>
+                  </h2>
+                  <button
+                    onClick={() =>
+                      navigate(
+                        `/dashboard/researcher/projects/create/add-sample/${projectId}`
+                      )
+                    }
+                    className="text-teal-600 hover:bg-teal-50 p-2 rounded-full"
+                    title="Ajouter un échantillon"
+                  >
+                    <FaPlus />
+                  </button>
+                </div>
 
                 {project.samples && project.samples.length > 0 ? (
                   <div className="overflow-x-auto">
@@ -464,10 +578,13 @@ function ProjectDetailPage() {
                             Nom
                           </th>
                           <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">
-                            Type
+                            protocolFile
                           </th>
                           <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">
                             Statut
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">
+                            Actions
                           </th>
                         </tr>
                       </thead>
@@ -476,15 +593,41 @@ function ProjectDetailPage() {
                           <tr key={index} className="hover:bg-gray-50">
                             <td className="px-3 py-2 whitespace-nowrap">
                               <div className="text-sm font-medium text-gray-900">
-                                {sample.name}
+                                <button
+                                  onClick={() =>
+                                    navigate(
+                                      `/dashboard/researcher/projects/samples/${sample._id}`
+                                    )
+                                  }
+                                  className="text-blue-600 hover:underline"
+                                >
+                                  {sample.name}
+                                </button>
                               </div>
                               <div className="text-xs text-gray-500">
                                 ID: {sample.identification}
                               </div>
                             </td>
                             <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
-                              {sample.type}
+                              {sample.protocolFile?.fileName ? (
+                                <a
+                                  href={`${
+                                    import.meta.env.VITE_API_URL
+                                  }/${sample.protocolFile.fileLocation.replace(
+                                    /\\/g,
+                                    "/"
+                                  )}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 hover:underline"
+                                >
+                                  Dawnload
+                                </a>
+                              ) : (
+                                "Aucun fichier"
+                              )}
                             </td>
+
                             <td className="px-3 py-2 whitespace-nowrap">
                               <span
                                 className={`px-2 py-1 text-xs rounded-full ${
@@ -498,6 +641,40 @@ function ProjectDetailPage() {
                                 {sample.status}
                               </span>
                             </td>
+                            <td className="px-3 py-2 whitespace-nowrap">
+                              {sample.status === "Analyzed" && (
+                                <button
+                                  onClick={() =>
+                                    navigate(
+                                      `/dashboard/researcher/projects/${projectId}/samples/${sample._id}/upload-report`
+                                    )
+                                  }
+                                  className="text-teal-600 hover:bg-teal-50 p-2 rounded-full"
+                                  title="Télécharger le rapport"
+                                >
+                                  <FaFileDownload />
+                                </button>
+                              )}
+                              {/* update button */}
+                              <button
+                                onClick={() =>
+                                  navigate(
+                                    `/dashboard/researcher/projects/${projectId}/samples/${sample._id}/edit`
+                                  )
+                                }
+                                className="text-teal-600 hover:bg-teal-50 p-2 rounded-full"
+                                title="Mettre à jour le sample"
+                              >
+                                <FaEdit />
+                              </button>
+                              <button
+                                onClick={() => confirmSampleDelete(sample._id)}
+                                className="text-red-500 hover:bg-red-50 p-2 rounded-full"
+                                title="Supprimer l'échantillon"
+                              >
+                                <FaTrash />
+                              </button>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -508,8 +685,7 @@ function ProjectDetailPage() {
                     <FaFlask className="mx-auto text-gray-300 text-4xl mb-2" />
                     <p className="text-gray-500">
                       Aucun échantillon associé à ce projet
-                      </p>
-                      
+                    </p>
                   </div>
                 )}
               </div>

@@ -1,447 +1,715 @@
 const request = require("supertest");
 const express = require("express");
 const bodyParser = require("body-parser");
-const mongoose = require("mongoose");
 const projectController = require("../controllers/projectController");
 const Project = require("../models/Project");
 const Sample = require("../models/Sample");
-const app = express();
+const User = require("../models/User");
+const mongoose = require("mongoose");
+const {
+  createNotification,
+  createNotificationForUsers,
+} = require("../controllers/NotificationsController");
 
-// Basic setup
-app.use(bodyParser.json());
+jest.mock("../controllers/NotificationsController", () => ({
+  createNotification: jest.fn().mockResolvedValue({}),
+  createNotificationForUsers: jest.fn().mockResolvedValue({}),
+}));
 
-// Mock ObjectID for consistent testing
-const mockUserId = new mongoose.Types.ObjectId();
-const mockProjectId = new mongoose.Types.ObjectId();
-const mockSampleId = new mongoose.Types.ObjectId();
-
-// Mock authentication middleware
-app.use((req, res, next) => {
-  if (req.headers.authorization) {
-    // Simulate authenticated user with researcher role
-    req.user = {
-      _id: mockUserId,
-      id: mockUserId.toString(),
-      role: "Researcher",
-    };
-    next();
-  } else {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
-});
-
-// Mock role-based authorization middleware
-const checkRole = (role) => (req, res, next) => {
-  if (req.user && req.user.role === role) {
-    next();
-  } else {
-    res.status(403).json({ message: "Forbidden: Insufficient role" });
-  }
+const authMiddleware = (req, res, next) => {
+  req.user = {
+    _id: "mockUserId",
+    id: "mockUserId",
+    name: "Test User",
+    email: "test@example.com",
+    role: "admin",
+  };
+  next();
 };
 
-// Set up routes with proper middleware
-app.post("/projects", checkRole("Researcher"), projectController.createProject);
-app.post(
-  "/projects/:projectId/samples",
-  checkRole("Researcher"),
-  projectController.addSampleToProject
-);
+const app = express();
+app.use(bodyParser.json());
+app.use(authMiddleware);
+
+app.post("/projects", projectController.createProject);
+app.post("/projects/:projectId/samples", projectController.addSampleToProject);
 app.get("/projects/:projectId/samples", projectController.getSamplesByProject);
 app.get("/projects", projectController.getAllProjects);
+app.get("/projects/:projectId", projectController.getProjectById);
+app.get(
+  "/projects/:projectId/samples/:sampleId",
+  projectController.getSampleById
+);
+app.put("/projects/:projectId", projectController.updateProject);
+app.delete(
+  "/projects/:projectId/samples/:sampleId",
+  projectController.deleteSample
+);
+app.delete("/projects/:projectId", projectController.deleteProjectByRole);
+app.post(
+  "/projects/:projectId/reports/draft",
+  projectController.saveFinalReportDraft
+);
+app.post(
+  "/projects/:projectId/reports/publish",
+  projectController.publishFinalReport
+);
+app.get(
+  "/projects/:projectId/reports/versions",
+  projectController.getReportVersions
+);
+app.get(
+  "/projects/:projectId/reports/versions/:versionId",
+  projectController.getReportVersion
+);
+app.post("/projects/:projectId/reports/upload", projectController.uploadReport);
 
-// Mock implementations for the Project model
-jest.mock("../models/Project", () => {
-  return {
-    create: jest.fn(),
-    findById: jest.fn(),
-    find: jest.fn(),
-    findOne: jest.fn(),
-    save: jest.fn(),
-  };
-});
+const mockFileMiddleware = (req, res, next) => {
+  if (req.body.mockFile) {
+    req.file = {
+      originalname: "test-protocol.pdf",
+      path: "/uploads/test-protocol.pdf",
+      mimetype: "application/pdf",
+    };
+  }
+  next();
+};
 
-// Mock implementations for the Sample model
-jest.mock("../models/Sample", () => {
-  return {
-    create: jest.fn(),
-    find: jest.fn(),
-  };
-});
+app.post(
+  "/projects/:projectId/samples",
+  mockFileMiddleware,
+  projectController.addSampleToProject
+);
 
 describe("Project Controller Tests", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  // Tests for project creation
-  describe("POST /projects", () => {
-    it("should create a project successfully", async () => {
-      // Define valid project data
-      const projectData = {
-        projectName: "New Research Project",
-        researchDomain: "Biology",
-        teamLead: mockUserId,
-        startDate: new Date().toISOString(),
-        deadline: new Date().toISOString(),
-        description: "Project description",
+  describe("Create Project", () => {
+    it("should create a new project successfully", async () => {
+      jest.spyOn(Project, "findOne").mockResolvedValue(null);
+      jest.spyOn(Project.prototype, "save").mockResolvedValue();
+
+      const mockProjectData = {
+        projectName: "Test Project",
+        researchDomains: ["Biology", "Chemistry"],
+        teamLead: "leadUserId",
+        fundingSource: "Research Grant",
+        budget: 10000,
+        startDate: "2025-01-01",
+        deadline: "2025-12-31",
+        status: "Active",
+        collaboratingInstitutions: ["University A", "University B"],
+        description: "A test project description",
+        expectedOutcomes: "Expected research outcomes",
+        teamMembers: ["member1", "member2"],
       };
 
-      // Mock successful project creation
-      const savedProject = {
-        ...projectData,
-        _id: mockProjectId,
-        createdBy: mockUserId,
-      };
-
-      Project.create.mockResolvedValue(savedProject);
-
-      const res = await request(app)
+      const response = await request(app)
         .post("/projects")
-        .send(projectData)
-        .set("Authorization", "Bearer mock_token");
+        .send(mockProjectData);
 
-      expect(res.status).toBe(201);
-      expect(res.body.message).toBe("Project created successfully");
-      expect(Project.create).toHaveBeenCalledWith({
-        ...projectData,
-        createdBy: mockUserId,
-      });
+      expect(response.status).toBe(201);
+      expect(response.body.message).toBe("Project created successfully");
+      expect(Project.prototype.save).toHaveBeenCalled();
+      expect(createNotification).toHaveBeenCalled();
+      expect(createNotificationForUsers).toHaveBeenCalled();
     });
 
     it("should return 400 if required fields are missing", async () => {
-      // Missing required fields
-      const incompleteData = {
-        projectName: "Incomplete Project",
-        teamLead: mockUserId.toString(),
+      const incompleteProjectData = {
+        projectName: "Test Project",
       };
 
-      const res = await request(app)
+      const response = await request(app)
         .post("/projects")
-        .send(incompleteData)
-        .set("Authorization", "Bearer mock_token");
+        .send(incompleteProjectData);
 
-      expect(res.status).toBe(400);
-      expect(res.body.error).toBe("Missing required fields");
+      expect(response.status).toBe(400);
+      expect(response.body.message).toBe("Missing required fields");
     });
 
-    it("should return 401 if no token is provided", async () => {
-      const projectData = {
-        projectName: "Unauthorized Project",
-        researchDomain: "Biology",
-        teamLead: mockUserId.toString(),
-        startDate: new Date().toISOString(),
-        deadline: new Date().toISOString(),
-        description: "Project description",
+    it("should return 400 if project already exists", async () => {
+      jest
+        .spyOn(Project, "findOne")
+        .mockResolvedValue({ name: "Test Project" });
+
+      const mockProjectData = {
+        name: "Test Project",
+        projectName: "Test Project",
+        researchDomains: ["Biology"],
+        teamLead: "leadUserId",
+        startDate: "2025-01-01",
+        deadline: "2025-12-31",
+        description: "Test description",
       };
 
-      const res = await request(app).post("/projects").send(projectData);
+      const response = await request(app)
+        .post("/projects")
+        .send(mockProjectData);
 
-      expect(res.status).toBe(401);
-      expect(res.body.message).toBe("Unauthorized");
+      expect(response.status).toBe(400);
+      expect(response.body.message).toBe("Project already exists");
     });
 
-    it("should return 403 if user has insufficient role", async () => {
-      // Override the user role for this test
-      app.use((req, res, next) => {
-        req.user = { ...req.user, role: "Technician" }; // Not a Researcher
-        next();
-      });
+    it("should handle errors during project creation", async () => {
+      jest.spyOn(Project, "findOne").mockResolvedValue(null);
+      jest
+        .spyOn(Project.prototype, "save")
+        .mockRejectedValue(new Error("Database Error"));
 
-      const projectData = {
-        projectName: "Forbidden Project",
-        researchDomain: "Biology",
-        teamLead: mockUserId.toString(),
-        startDate: new Date().toISOString(),
-        deadline: new Date().toISOString(),
-        description: "Project description",
+      const mockProjectData = {
+        projectName: "Test Project",
+        researchDomains: ["Biology"],
+        teamLead: "leadUserId",
+        startDate: "2025-01-01",
+        deadline: "2025-12-31",
+        description: "Test description",
       };
 
-      const res = await request(app)
+      const response = await request(app)
         .post("/projects")
-        .send(projectData)
-        .set("Authorization", "Bearer mock_token");
+        .send(mockProjectData);
 
-      expect(res.status).toBe(403);
-      expect(res.body.message).toBe("Forbidden: Insufficient role");
-    });
-
-    it("should handle database errors properly", async () => {
-      const projectData = {
-        projectName: "Error Project",
-        researchDomain: "Biology",
-        teamLead: mockUserId,
-        startDate: new Date().toISOString(),
-        deadline: new Date().toISOString(),
-        description: "Project description",
-      };
-
-      // Mock database error
-      Project.create.mockRejectedValue(new Error("Database error"));
-
-      const res = await request(app)
-        .post("/projects")
-        .send(projectData)
-        .set("Authorization", "Bearer mock_token");
-
-      expect(res.status).toBe(500);
-      expect(res.body.error).toBe("Failed to create project");
+      expect(response.status).toBe(500);
+      expect(response.body.error).toBe("Failed to create project");
     });
   });
 
-  // Tests for adding samples to projects
-  describe("POST /projects/:projectId/samples", () => {
-    it("should add a sample to the project successfully", async () => {
-      // Mock project retrieval
+  describe("Add Sample to Project", () => {
+    it("should add a sample to a project successfully", async () => {
       const mockProject = {
-        _id: mockProjectId,
-        projectName: "Test Project",
-        samples: [],
+        _id: "mockProjectId",
+        teamLead: "teamLeadId",
+        teamMembers: ["member1", "member2"],
       };
 
-      Project.findById.mockResolvedValue(mockProject);
+      jest.spyOn(Project, "findById").mockResolvedValue(mockProject);
+      jest.spyOn(Sample.prototype, "save").mockResolvedValue();
+      jest.spyOn(Project, "findByIdAndUpdate").mockResolvedValue({});
 
-      // Sample data
-      const sampleData = {
-        name: "Test Sample",
-        description: "Sample description",
-        type: "Blood",
-        quantity: 10,
-        unit: "ml",
-        collectionDate: new Date().toISOString(),
-        identification: "SAMPLE-001",
+      const mockSampleData = {
+        sampleData: JSON.stringify({
+          name: "Test Sample",
+          description: "A test sample",
+          type: "Blood",
+          quantity: 10,
+          unit: "ml",
+          collectionDate: "2025-01-15",
+          technicianResponsible: "techId",
+          expirationDate: "2025-12-31",
+          identification: "SAMPLE-001",
+        }),
+        mockFile: true,
       };
 
-      // Mock successful sample creation
-      const createdSample = {
-        ...sampleData,
-        _id: mockSampleId,
-        project: mockProjectId,
-        createdBy: mockUserId,
-        technicianResponsible: mockUserId,
-        save: jest.fn().mockResolvedValue(true),
-      };
+      const response = await request(app)
+        .post("/projects/mockProjectId/samples")
+        .send(mockSampleData);
 
-      Sample.create = jest.fn().mockResolvedValue(createdSample);
-
-      // Mock project update
-      mockProject.samples.push(mockSampleId);
-      mockProject.save = jest.fn().mockResolvedValue(mockProject);
-
-      const res = await request(app)
-        .post(`/projects/${mockProjectId}/samples`)
-        .send(sampleData)
-        .set("Authorization", "Bearer mock_token");
-
-      expect(res.status).toBe(201);
-      expect(res.body.message).toBe("Sample added successfully");
-      expect(Sample.create).toHaveBeenCalledWith({
-        ...sampleData,
-        project: mockProjectId.toString(),
-        createdBy: mockUserId,
-        technicianResponsible: mockUserId,
-      });
+      expect(response.status).toBe(201);
+      expect(response.body.message).toBe("Sample added successfully");
+      expect(Sample.prototype.save).toHaveBeenCalled();
+      expect(Project.findByIdAndUpdate).toHaveBeenCalledWith(
+        "mockProjectId",
+        expect.objectContaining({
+          $push: expect.any(Object),
+        })
+      );
+      expect(createNotification).toHaveBeenCalled();
+      expect(createNotificationForUsers).toHaveBeenCalled();
     });
 
     it("should return 404 if project is not found", async () => {
-      Project.findById.mockResolvedValue(null);
+      jest.spyOn(Project, "findById").mockResolvedValue(null);
 
-      const sampleData = {
-        name: "Test Sample",
-        description: "Sample description",
-        type: "Blood",
-        quantity: 10,
-        unit: "ml",
-        collectionDate: new Date().toISOString(),
-        identification: "SAMPLE-002",
-      };
+      const response = await request(app)
+        .post("/projects/nonexistentId/samples")
+        .send({});
 
-      const res = await request(app)
-        .post(`/projects/${mockProjectId}/samples`)
-        .send(sampleData)
-        .set("Authorization", "Bearer mock_token");
-
-      expect(res.status).toBe(404);
-      expect(res.body.error).toBe("Project not found");
+      expect(response.status).toBe(404);
+      expect(response.body.error).toBe("Project not found");
     });
 
-    it("should return 400 if required sample data is missing", async () => {
-      Project.findById.mockResolvedValue({
-        _id: mockProjectId,
-        projectName: "Test Project",
-        samples: [],
-      });
-
-      // Missing required fields
-      const incompleteData = {
-        name: "Test Sample",
-        // Missing description, type, etc.
+    it("should handle errors when adding a sample", async () => {
+      const mockProject = {
+        _id: "mockProjectId",
+        teamLead: "teamLeadId",
+        teamMembers: ["member1", "member2"],
       };
 
-      const res = await request(app)
-        .post(`/projects/${mockProjectId}/samples`)
-        .send(incompleteData)
-        .set("Authorization", "Bearer mock_token");
+      jest.spyOn(Project, "findById").mockResolvedValue(mockProject);
+      jest
+        .spyOn(Sample.prototype, "save")
+        .mockRejectedValue(new Error("Database Error"));
 
-      expect(res.status).toBe(400);
-      expect(res.body.error).toBe("Missing required sample data");
-    });
-
-    it("should handle duplicate identification error", async () => {
-      Project.findById.mockResolvedValue({
-        _id: mockProjectId,
-        projectName: "Test Project",
-        samples: [],
-      });
-
-      const sampleData = {
-        name: "Test Sample",
-        description: "Sample description",
-        type: "Blood",
-        quantity: 10,
-        unit: "ml",
-        collectionDate: new Date().toISOString(),
-        identification: "SAMPLE-003",
+      const mockSampleData = {
+        sampleData: JSON.stringify({
+          name: "Test Sample",
+          description: "A test sample",
+          type: "Blood",
+          quantity: 10,
+          unit: "ml",
+          collectionDate: "2025-01-15",
+          technicianResponsible: "techId",
+          expirationDate: "2025-12-31",
+          identification: "SAMPLE-001",
+        }),
       };
 
-      // Mock MongoDB duplicate key error
-      const duplicateError = new Error("Duplicate key error");
-      duplicateError.code = 11000;
-      Sample.create = jest.fn().mockRejectedValue(duplicateError);
+      const response = await request(app)
+        .post("/projects/mockProjectId/samples")
+        .send(mockSampleData);
 
-      const res = await request(app)
-        .post(`/projects/${mockProjectId}/samples`)
-        .send(sampleData)
-        .set("Authorization", "Bearer mock_token");
-
-      expect(res.status).toBe(409);
-      expect(res.body.error).toBe("Sample identification already exists");
+      expect(response.status).toBe(500);
+      expect(response.body.error).toBe("Database Error");
     });
   });
 
-  // Tests for retrieving samples from a project
-  describe("GET /projects/:projectId/samples", () => {
-    it("should retrieve all samples for a project", async () => {
-      const mockProject = {
-        _id: mockProjectId,
-        projectName: "Test Project",
-        samples: [mockSampleId],
-      };
-
-      Project.findById.mockResolvedValue(mockProject);
-
+  describe("Get Samples By Project", () => {
+    it("should return all samples for a project", async () => {
       const mockSamples = [
-        {
-          _id: mockSampleId,
-          name: "Test Sample",
-          description: "Sample description",
-          type: "Blood",
-          status: "Pending",
-        },
+        { id: "sample1", name: "Sample 1" },
+        { id: "sample2", name: "Sample 2" },
       ];
 
-      Sample.find.mockResolvedValue(mockSamples);
+      jest.spyOn(Sample, "find").mockReturnValue({
+        sort: jest.fn().mockResolvedValue(mockSamples),
+      });
 
-      const res = await request(app)
-        .get(`/projects/${mockProjectId}/samples`)
-        .set("Authorization", "Bearer mock_token");
+      const response = await request(app).get(
+        "/projects/mockProjectId/samples"
+      );
 
-      expect(res.status).toBe(200);
-      expect(res.body).toHaveLength(1);
-      expect(res.body[0].name).toBe("Test Sample");
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual(mockSamples);
+      expect(Sample.find).toHaveBeenCalledWith({ project: "mockProjectId" });
     });
 
-    it("should return 404 if project is not found", async () => {
-      Project.findById.mockResolvedValue(null);
+    it("should handle errors when fetching samples", async () => {
+      jest.spyOn(Sample, "find").mockReturnValue({
+        sort: jest.fn().mockRejectedValue(new Error("Database Error")),
+      });
 
-      const res = await request(app)
-        .get(`/projects/${mockProjectId}/samples`)
-        .set("Authorization", "Bearer mock_token");
+      const response = await request(app).get(
+        "/projects/mockProjectId/samples"
+      );
 
-      expect(res.status).toBe(404);
-      expect(res.body.error).toBe("Project not found");
+      expect(response.status).toBe(500);
+      expect(response.body.error).toBe("Database Error");
     });
   });
 
-  // Tests for retrieving all projects
-  describe("GET /projects", () => {
-    it("should return all projects associated with the user", async () => {
+  describe("Get Sample By ID", () => {
+    it("should return a sample by ID", async () => {
+      const mockSample = {
+        _id: "sampleId",
+        name: "Test Sample",
+        description: "A test sample",
+      };
+
+      jest.spyOn(Sample, "findById").mockResolvedValue(mockSample);
+
+      const response = await request(app).get(
+        "/projects/mockProjectId/samples/sampleId"
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual(mockSample);
+    });
+
+    it("should return 404 if sample is not found", async () => {
+      jest.spyOn(Sample, "findById").mockResolvedValue(null);
+
+      const response = await request(app).get(
+        "/projects/mockProjectId/samples/nonexistentId"
+      );
+
+      expect(response.status).toBe(404);
+      expect(response.body.message).toBe("Sample not found");
+    });
+
+    it("should handle errors when fetching a sample", async () => {
+      jest
+        .spyOn(Sample, "findById")
+        .mockRejectedValue(new Error("Database Error"));
+
+      const response = await request(app).get(
+        "/projects/mockProjectId/samples/sampleId"
+      );
+
+      expect(response.status).toBe(500);
+      expect(response.body.error).toBe("Database Error");
+    });
+  });
+
+  describe("Get All Projects", () => {
+    it("should return all projects for the user with progress calculation", async () => {
       const mockProjects = [
         {
-          _id: mockProjectId,
-          projectName: "User's Project",
-          researchDomain: "Biology",
-          teamLead: mockUserId,
-          description: "A project",
+          _id: "project1",
+          projectName: "Project 1",
+          samples: [{ status: "Analyzed" }, { status: "Pending" }],
+        },
+        {
+          _id: "project2",
+          projectName: "Project 2",
+          samples: [
+            { status: "Analyzed" },
+            { status: "Analyzed" },
+            { status: "Analyzed" },
+            { status: "Pending" },
+          ],
         },
       ];
 
-      // Mock the find with different query results
-      Project.find.mockImplementation((query) => {
-        // If query has createdBy or teamLead matching mockUserId
-        if (
-          query.$or &&
-          query.$or.some(
-            (q) =>
-              (q.createdBy && q.createdBy.equals(mockUserId)) ||
-              (q.teamLead && q.teamLead.equals(mockUserId)) ||
-              (q["teamMembers.user"] &&
-                q["teamMembers.user"].equals(mockUserId))
-          )
-        ) {
-          return {
-            populate: jest.fn().mockReturnValue({
-              populate: jest.fn().mockResolvedValue(mockProjects),
-            }),
-          };
-        }
-        return {
-          populate: jest.fn().mockReturnValue({
-            populate: jest.fn().mockResolvedValue([]),
-          }),
-        };
+      jest.spyOn(Project, "find").mockReturnValue({
+        populate: jest.fn().mockReturnThis(),
+        sort: jest.fn().mockReturnThis(),
+        lean: jest.fn().mockResolvedValue(mockProjects),
       });
 
-      const res = await request(app)
-        .get("/projects")
-        .set("Authorization", "Bearer mock_token");
+      const response = await request(app).get("/projects");
 
-      expect(res.status).toBe(200);
-      expect(res.body).toHaveLength(1);
-      expect(res.body[0].projectName).toBe("User's Project");
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveLength(2);
+      expect(response.body[0].progress).toBe(50);
+      expect(response.body[1].progress).toBe(75);
     });
 
-    it("should return empty array if user has no projects", async () => {
-      Project.find.mockImplementation(() => {
-        return {
-          populate: jest.fn().mockReturnValue({
-            populate: jest.fn().mockResolvedValue([]),
-          }),
-        };
+    it("should handle errors when fetching projects", async () => {
+      jest.spyOn(Project, "find").mockReturnValue({
+        populate: jest.fn().mockReturnThis(),
+        sort: jest.fn().mockReturnThis(),
+        lean: jest.fn().mockRejectedValue(new Error("Database Error")),
       });
 
-      const res = await request(app)
-        .get("/projects")
-        .set("Authorization", "Bearer mock_token");
+      const response = await request(app).get("/projects");
 
-      expect(res.status).toBe(200);
-      expect(res.body).toHaveLength(0);
+      expect(response.status).toBe(500);
+      expect(response.body.error).toBe(
+        "Erreur serveur lors de la récupération des projets"
+      );
+    });
+  });
+
+  describe("Get Project By ID", () => {
+    it("should return a project with progress calculation", async () => {
+      const mockProject = {
+        _id: "project1",
+        projectName: "Project 1",
+        samples: [{ status: "Analyzed" }, { status: "Pending" }],
+      };
+
+      jest.spyOn(Project, "findById").mockReturnValue({
+        populate: jest.fn().mockReturnThis(),
+        lean: jest.fn().mockReturnThis(),
+        exec: jest.fn().mockResolvedValue(mockProject),
+      });
+
+      const response = await request(app).get("/projects/project1");
+
+      expect(response.status).toBe(200);
+      expect(response.body.project.progress).toBe(50);
     });
 
-    it("should handle database errors properly", async () => {
-      Project.find.mockImplementation(() => {
-        return {
-          populate: jest.fn().mockReturnValue({
-            populate: jest.fn().mockRejectedValue(new Error("Database error")),
-          }),
-        };
+    it("should return 404 if project is not found", async () => {
+      jest.spyOn(Project, "findById").mockReturnValue({
+        populate: jest.fn().mockReturnThis(),
+        lean: jest.fn().mockReturnThis(),
+        exec: jest.fn().mockResolvedValue(null),
       });
 
-      const res = await request(app)
-        .get("/projects")
-        .set("Authorization", "Bearer mock_token");
+      const response = await request(app).get("/projects/nonexistentId");
+      expect(response.status).toBe(404);
+      expect(response.body.error).toBe("Projet non trouvé");
+    });
 
-      expect(res.status).toBe(500);
-      expect(res.body.error).toBeTruthy();
+    it("should handle errors when fetching a project", async () => {
+      jest.spyOn(Project, "findById").mockReturnValue({
+        populate: jest.fn().mockReturnThis(),
+        lean: jest.fn().mockReturnThis(),
+        exec: jest.fn().mockRejectedValue(new Error("Database Error")),
+      });
+
+      const response = await request(app).get("/projects/project1");
+
+      expect(response.status).toBe(500);
+      expect(response.body.error).toBe("Failed to fetch project details");
+    });
+  });
+
+  describe("Update Project", () => {
+    it("should update a project successfully", async () => {
+      const mockProject = {
+        _id: "mockProjectId",
+        save: jest.fn().mockResolvedValue({}),
+      };
+
+      jest.spyOn(Project, "findById").mockResolvedValue(mockProject);
+
+      const updatedProjectData = {
+        projectName: "Updated Project",
+        researchDomains: ["Biology", "Physics"],
+        teamLead: "leadUserId",
+        fundingSource: "Updated Grant",
+        budget: 15000,
+        startDate: "2025-01-01",
+        deadline: "2025-12-31",
+        status: "Active",
+        collaboratingInstitutions: ["University A", "University C"],
+        description: "Updated description",
+        expectedOutcomes: "Updated outcomes",
+        teamMembers: ["member1", "member3"],
+      };
+
+      const response = await request(app)
+        .put("/projects/mockProjectId")
+        .send(updatedProjectData);
+
+      expect(response.status).toBe(200);
+      expect(response.body.message).toBe("Project updated successfully");
+      expect(mockProject.save).toHaveBeenCalled();
+    });
+
+    it("should return 400 if required fields are missing", async () => {
+      const incompleteProjectData = {
+        projectName: "Updated Project",
+      };
+
+      const response = await request(app)
+        .put("/projects/mockProjectId")
+        .send(incompleteProjectData);
+
+      expect(response.status).toBe(400);
+      expect(response.body.message).toBe("Missing required fields");
+    });
+
+    it("should return 404 if project is not found", async () => {
+      jest.spyOn(Project, "findById").mockResolvedValue(null);
+
+      const updatedProjectData = {
+        projectName: "Updated Project",
+        researchDomains: ["Biology"],
+        teamLead: "leadUserId",
+        startDate: "2025-01-01",
+        deadline: "2025-12-31",
+        description: "Updated description",
+      };
+
+      const response = await request(app)
+        .put("/projects/nonexistentId")
+        .send(updatedProjectData);
+
+      expect(response.status).toBe(404);
+      expect(response.body.message).toBe("Project not found");
+    });
+
+    it("should handle errors during project update", async () => {
+      const mockProject = {
+        _id: "mockProjectId",
+        save: jest.fn().mockRejectedValue(new Error("Database Error")),
+      };
+
+      jest.spyOn(Project, "findById").mockResolvedValue(mockProject);
+
+      const updatedProjectData = {
+        projectName: "Updated Project",
+        researchDomains: ["Biology"],
+        teamLead: "leadUserId",
+        startDate: "2025-01-01",
+        deadline: "2025-12-31",
+        description: "Updated description",
+      };
+
+      const response = await request(app)
+        .put("/projects/mockProjectId")
+        .send(updatedProjectData);
+
+      expect(response.status).toBe(500);
+      expect(response.body.error).toBe("Failed to update project");
+    });
+  });
+
+  describe("Delete Sample", () => {
+    it("should return 404 if sample is not found", async () => {
+      jest.spyOn(Sample, "findByIdAndDelete").mockResolvedValue(null);
+
+      const response = await request(app).delete(
+        "/projects/mockProjectId/samples/nonexistentId"
+      );
+
+      expect(response.status).toBe(404);
+      expect(response.body.error).toBe("Sample not found");
+    });
+
+    it("should return 404 if project is not found", async () => {
+      jest.spyOn(Sample, "findByIdAndDelete").mockResolvedValue({
+        _id: "sampleId",
+      });
+      jest.spyOn(Project, "findById").mockResolvedValue(null);
+
+      const response = await request(app).delete(
+        "/projects/nonexistentId/samples/sampleId"
+      );
+
+      expect(response.status).toBe(404);
+      expect(response.body.error).toBe("Project not found");
+    });
+
+    it("should handle errors when deleting a sample", async () => {
+      jest
+        .spyOn(Sample, "findByIdAndDelete")
+        .mockRejectedValue(new Error("Database Error"));
+
+      const response = await request(app).delete(
+        "/projects/mockProjectId/samples/sampleId"
+      );
+
+      expect(response.status).toBe(500);
+      expect(response.body.error).toBe("Failed to delete sample");
+    });
+  });
+
+  describe("Delete Project By Role", () => {
+    it("should return 404 if project is not found", async () => {
+      jest.spyOn(Project, "findById").mockResolvedValue(null);
+
+      const response = await request(app).delete("/projects/nonexistentId");
+
+      expect(response.status).toBe(404);
+      expect(response.body.error).toBe("Project not found");
+    });
+
+    it("should return 403 if user is not the creator", async () => {
+      const mockProject = {
+        _id: "mockProjectId",
+        createdBy: "differentUserId",
+      };
+
+      jest.spyOn(Project, "findById").mockResolvedValue(mockProject);
+
+      const response = await request(app).delete("/projects/mockProjectId");
+
+      expect(response.status).toBe(403);
+      expect(response.body.error).toBe("Forbidden");
+    });
+
+    it("should handle errors when deleting a project", async () => {
+      jest
+        .spyOn(Project, "findById")
+        .mockRejectedValue(new Error("Database Error"));
+
+      const response = await request(app).delete("/projects/mockProjectId");
+
+      expect(response.status).toBe(500);
+      expect(response.body.error).toBe("Failed to delete project");
+    });
+  });
+
+  describe("Final Report Operations", () => {
+    it("should save a draft report successfully", async () => {
+      const mockProject = {
+        _id: "mockProjectId",
+        save: jest.fn().mockResolvedValue({}),
+      };
+
+      jest.spyOn(Project, "findById").mockResolvedValue(mockProject);
+
+      const reportData = {
+        content: "<p>Draft report content</p>",
+        publishedAt: null,
+      };
+
+      const response = await request(app)
+        .post("/projects/mockProjectId/reports/draft")
+        .send(reportData);
+
+      expect(response.status).toBe(200);
+      expect(response.body.message).toBe("Draft saved successfully");
+      expect(mockProject.save).toHaveBeenCalled();
+    });
+
+    it("should publish a final report successfully", async () => {
+      const mockProject = {
+        _id: "mockProjectId",
+        save: jest.fn().mockResolvedValue({}),
+      };
+
+      jest.spyOn(Project, "findById").mockResolvedValue(mockProject);
+
+      const reportData = {
+        content: "<p>Final report content</p>",
+        publishedAt: new Date().toISOString(),
+      };
+
+      const response = await request(app)
+        .post("/projects/mockProjectId/reports/publish")
+        .send(reportData);
+
+      expect(response.status).toBe(200);
+      expect(response.body.message).toBe("Final report published successfully");
+      expect(mockProject.save).toHaveBeenCalled();
+    });
+
+    it("should get report versions successfully", async () => {
+      const mockProject = {
+        _id: "mockProjectId",
+        reportVersions: [
+          { _id: "version1", content: "Version 1" },
+          { _id: "version2", content: "Version 2" },
+        ],
+      };
+
+      jest.spyOn(Project, "findById").mockResolvedValue(mockProject);
+
+      const response = await request(app).get(
+        "/projects/mockProjectId/reports/versions"
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual(mockProject.reportVersions);
+    });
+
+    it("should get a specific report version", async () => {
+      const mockVersion = { _id: "version1", content: "Version 1" };
+      const mockProject = {
+        _id: "mockProjectId",
+        reportVersions: {
+          id: jest.fn().mockReturnValue(mockVersion),
+        },
+      };
+
+      jest.spyOn(Project, "findById").mockResolvedValue(mockProject);
+
+      const response = await request(app).get(
+        "/projects/mockProjectId/reports/versions/version1"
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual(mockVersion);
+    });
+
+    it("should upload a report successfully", async () => {
+      const mockProject = {
+        _id: "mockProjectId",
+        save: jest.fn().mockResolvedValue({}),
+      };
+
+      jest.spyOn(Project, "findById").mockResolvedValue(mockProject);
+
+      const reportData = {
+        content: "Uploaded report content",
+      };
+
+      const response = await request(app)
+        .post("/projects/mockProjectId/reports/upload")
+        .send(reportData);
+
+      expect(response.status).toBe(200);
+      expect(response.body.message).toBe("Report uploaded successfully");
+      expect(mockProject.save).toHaveBeenCalled();
     });
   });
 });
