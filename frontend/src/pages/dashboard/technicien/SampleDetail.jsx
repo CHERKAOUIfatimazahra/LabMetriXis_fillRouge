@@ -141,7 +141,6 @@ function SampleDetail() {
         const fullName = user.name || "Utilisateur";
         setUserName(fullName);
 
-        // Generate initials
         const initials = fullName
           .split(" ")
           .map((n) => n[0])
@@ -170,8 +169,7 @@ function SampleDetail() {
     try {
       const newStatus =
         sample.status === "In Analysis" ? "Analysis" : "In Analysis";
-
-      // Appel API pour mettre à jour le statut de l'échantillon
+      
       await axios.patch(
         `${import.meta.env.VITE_API_URL}/samples/samples/${sampleId}/status`,
         { status: newStatus },
@@ -180,7 +178,6 @@ function SampleDetail() {
         }
       );
 
-      // Mettre à jour le statut localement après une mise à jour réussie
       setSample({
         ...sample,
         status: newStatus,
