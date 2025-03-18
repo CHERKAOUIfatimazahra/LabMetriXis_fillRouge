@@ -1,6 +1,7 @@
 const { sendEmail } = require("../utils/mailer");
 require("dotenv").config();
 
+// function pour envoyer un email
 exports.contactUs = async (req, res) => {
   try {
     const { name, email, organization, message } = req.body;
