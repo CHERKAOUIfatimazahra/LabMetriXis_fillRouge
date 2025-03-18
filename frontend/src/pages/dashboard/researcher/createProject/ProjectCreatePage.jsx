@@ -19,7 +19,8 @@ function ProjectCreatePage() {
   const [availableUsers, setAvailableUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errors, setErrors] = useState({});
-
+  const [showOptionsModal, setShowOptionsModal] = useState(false);
+  const [createdProjectId, setCreatedProjectId] = useState(null);
   const [formData, setFormData] = useState({
     projectName: "",
     researchDomains: "",
@@ -37,7 +38,6 @@ function ProjectCreatePage() {
     samples: [],
   });
 
-  // Fetch available users when component mounts
   useEffect(() => {
     const fetchUsers = async () => {
       try {
@@ -68,7 +68,6 @@ function ProjectCreatePage() {
       [name]: type === "checkbox" ? checked : value,
     });
 
-    // Clear error when field is edited
     if (errors[name]) {
       setErrors({
         ...errors,
@@ -77,7 +76,6 @@ function ProjectCreatePage() {
     }
   };
 
-  // Handle adding team member
   const handleAddTeamMember = () => {
     if (selectedMember) {
       const memberToAdd = availableUsers.find((m) => m._id === selectedMember);
@@ -91,14 +89,12 @@ function ProjectCreatePage() {
     }
   };
 
-  // Handle removing team member
   const handleRemoveTeamMember = (memberId) => {
     setSelectedTeamMembers(
       selectedTeamMembers.filter((member) => member._id !== memberId)
     );
   };
 
-  // Extended research domains list
   const researchDomains = [
     "Biologie",
     "Chimie",
@@ -109,7 +105,6 @@ function ProjectCreatePage() {
     "Informatique",
   ];
 
-  // Validation function
   const validateForm = () => {
     let isValid = true;
     let newErrors = {};
@@ -178,11 +173,9 @@ function ProjectCreatePage() {
     return isValid;
   };
 
-  // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Validate form
     if (!validateForm()) {
       window.scrollTo(0, 0);
       return;
@@ -190,8 +183,6 @@ function ProjectCreatePage() {
 
     try {
       const token = localStorage.getItem("token");
-
-      // Extract just the user IDs from the selected team members
       const teamMemberIds = selectedTeamMembers.map((member) => member._id);
 
       const finalFormData = {
@@ -210,12 +201,11 @@ function ProjectCreatePage() {
           },
         }
       );
-      
+
       if (response.status === 201) {
-        // Redirect to project details page
-        const projectId = response.data.projectId;;
-        window.location.href = `/dashboard/researcher/projects/create/add-sample/${projectId}`;
-       
+        const projectId = response.data.projectId;
+        setCreatedProjectId(projectId);
+        setShowOptionsModal(true);
       } else {
         alert("Unexpected response from the server.");
       }
@@ -231,7 +221,14 @@ function ProjectCreatePage() {
     }
   };
 
-  // Navigation items config
+  const navigateToProjectList = () => {
+    navigate("/dashboard/researcher/projects");
+  };
+
+  const navigateToAddSample = (projectId) => {
+    window.location.href = `/dashboard/researcher/projects/create/add-sample/${projectId}`;
+  };
+
   const navItems = [
     {
       id: "overview",
@@ -265,7 +262,6 @@ function ProjectCreatePage() {
     },
   ];
 
-  // Error display component
   const ErrorMessage = ({ message }) => {
     return message ? (
       <p className="text-red-500 text-sm mt-1">{message}</p>
@@ -274,7 +270,72 @@ function ProjectCreatePage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header Component */}
+      {/* Modal pour les options après création */}
+      {showOptionsModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full">
+            <div className="flex items-center mb-6">
+              <div className="bg-teal-100 rounded-full p-3 mr-4">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-8 w-8 text-teal-600"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+              </div>
+              <h2 className="text-2xl font-bold text-gray-800">
+                Projet créé avec succès!
+              </h2>
+            </div>
+
+            <p className="text-gray-600 mb-8 text-lg">
+              Que souhaitez-vous faire maintenant?
+            </p>
+
+            <div className="grid grid-cols-1 gap-4">
+              <button
+                onClick={() => navigateToAddSample(createdProjectId)}
+                className="w-full px-6 py-3 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors duration-200 flex items-center justify-between"
+              >
+                <span className="text-lg font-medium">
+                  Ajouter des échantillons
+                </span>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M14 5l7 7m0 0l-7 7m7-7H3"
+                  />
+                </svg>
+              </button>
+
+              <button
+                onClick={navigateToProjectList}
+                className="w-full px-6 py-3 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-200 flex items-center justify-center"
+              >
+                <span className="text-lg font-medium">
+                  Revenir à la liste des projets
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <Header
         title="LabMetriXis - Recherche Scientifique"
         userName="Dr. Roberts"
@@ -661,7 +722,7 @@ function ProjectCreatePage() {
                     type="submit"
                     className="px-6 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 transition duration-150"
                   >
-                    Ajouter l'échantillon
+                    Créer le projet
                   </button>
                 </div>
               </form>
