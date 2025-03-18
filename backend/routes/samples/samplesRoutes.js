@@ -14,9 +14,6 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
-
-// Sample routes
-
 // get all samples by id of the technician
 router.get(
   "/samples",
