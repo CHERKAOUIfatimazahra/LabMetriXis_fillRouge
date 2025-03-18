@@ -12,8 +12,6 @@ import {
   FaArrowLeft,
   FaFile,
   FaCalendarAlt,
-  FaCheckCircle,
-  FaSave,
   FaPaperPlane,
   FaBold,
   FaItalic,
@@ -26,11 +24,9 @@ import {
   FaAlignCenter,
   FaAlignRight,
   FaUpload,
-  FaDownload,
   FaImage,
   FaTable,
   FaFilePdf,
-  FaHistory,
 } from "react-icons/fa";
 import { jsPDF } from "jspdf";
 
@@ -39,18 +35,14 @@ function TechnicianReportPage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("samples");
   const [loading, setLoading] = useState(false);
-  const [saveLoading, setSaveLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [sample, setSample] = useState(null);
   const [formData, setFormData] = useState({
     analysisReport: "",
   });
   const [autoSaveStatus, setAutoSaveStatus] = useState("Sauvegardé");
-  const [showVersionHistory, setShowVersionHistory] = useState(false);
-  const [versionHistory, setVersionHistory] = useState([]);
   const fileInputRef = useRef(null);
   const textareaRef = useRef(null);
-  const autoSaveTimerRef = useRef(null);
 
   useEffect(() => {
     const fetchSample = async () => {
@@ -117,11 +109,13 @@ function TechnicianReportPage() {
     setSubmitting(true);
 
     try {
-      await axios.post(
+      const response = await axios.post(
         `${
           import.meta.env.VITE_API_URL
         }/samples/samples/${sampleId}/analysis-report`,
-        { analysisReport: formData.analysisReport },
+        {
+          analysisReport: formData.analysisReport,
+        },
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -134,7 +128,6 @@ function TechnicianReportPage() {
     } catch (error) {
       console.error("Error submitting analysis report:", error);
       toast.error("Erreur lors de la soumission du rapport d'analyse");
-    } finally {
       setSubmitting(false);
     }
   };
@@ -167,22 +160,18 @@ function TechnicianReportPage() {
       doc.setFontSize(16);
       doc.text(title, 20, 20);
 
-      // Add date
       doc.setFontSize(12);
       doc.text(`Date: ${new Date().toLocaleDateString()}`, 20, 30);
 
-      // Add content with word wrap
       doc.setFontSize(12);
       const splitText = doc.splitTextToSize(formData.analysisReport, 170);
       doc.text(splitText, 20, 40);
 
-      // Create a safe filename
       const safeFilename =
         sample && sample.name
           ? sample.name.replace(/\s+/g, "_")
           : "rapport_analyse";
 
-      // Save the PDF
       doc.save(`${safeFilename}_Analysis_Report.pdf`);
 
       toast.success("PDF généré avec succès");
@@ -193,11 +182,9 @@ function TechnicianReportPage() {
   };
 
   const formatText = (format) => {
-    // Get textarea element
     const textarea = textareaRef.current;
     if (!textarea) return;
 
-    // Get selection start and end positions
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
     const selectedText = formData.analysisReport.substring(start, end);
@@ -205,7 +192,6 @@ function TechnicianReportPage() {
     let formattedText = selectedText;
     let cursorOffset = 0;
 
-    // Apply formatting based on the format type
     switch (format) {
       case "bold":
         formattedText = `**${selectedText}**`;
@@ -234,14 +220,12 @@ function TechnicianReportPage() {
         cursorOffset = 3;
         break;
       default:
-        // For other formatting, show toast
         toast.info(
           `Fonction de formatage "${format}" à implémenter avec un éditeur de texte riche`
         );
         return;
     }
 
-    // Update content with formatted text
     const newContent =
       formData.analysisReport.substring(0, start) +
       formattedText +
@@ -252,7 +236,6 @@ function TechnicianReportPage() {
       analysisReport: newContent,
     });
 
-    // Set cursor position after formatting tags
     setTimeout(() => {
       textarea.focus();
       textarea.setSelectionRange(
@@ -363,7 +346,6 @@ function TechnicianReportPage() {
                           </button>
                         </div>
                       </div>
-                      
                     </div>
 
                     {/* Word-like text editor toolbar */}
@@ -509,13 +491,11 @@ function TechnicianReportPage() {
                       <button
                         type="submit"
                         className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                        
                       >
-                          <span className="flex items-center">
-                            <FaPaperPlane className="mr-2" />
-                            Soumettre rapport
-                          </span>
-                        
+                        <span className="flex items-center">
+                          <FaPaperPlane className="mr-2" />
+                          Soumettre rapport
+                        </span>
                       </button>
                     </div>
                   </form>
