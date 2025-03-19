@@ -1,11 +1,13 @@
-FROM node:18-alpine
+FROM node:20
 
 WORKDIR /app
 
-COPY package*.json ./
+COPY package.json ./
 
 RUN npm install
+
 COPY . .
+ENV HOST=0.0.0.0
 
 EXPOSE 5173
 
