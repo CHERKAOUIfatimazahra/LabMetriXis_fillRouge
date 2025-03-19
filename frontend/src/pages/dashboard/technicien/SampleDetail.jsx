@@ -22,6 +22,7 @@ import {
 } from "react-icons/fa";
 import Header from "../../../components/dashboard/Header";
 import Sidebar from "../../../components/dashboard/Sidebar";
+import { jsPDF } from "jspdf";
 
 function SampleDetail() {
   const { sampleId } = useParams();
@@ -169,7 +170,7 @@ function SampleDetail() {
     try {
       const newStatus =
         sample.status === "In Analysis" ? "Analysis" : "In Analysis";
-      
+
       await axios.patch(
         `${import.meta.env.VITE_API_URL}/samples/samples/${sampleId}/status`,
         { status: newStatus },
@@ -192,6 +193,20 @@ function SampleDetail() {
 
   const handleCreateReport = () => {
     navigate(`/dashboard/technician/samples/${sampleId}/report`);
+  };
+
+  const downloadAnalysisReport = () => {
+    if (!sample || !sample.analysisReport) return;
+
+    const doc = new jsPDF();
+
+    doc.setFontSize(12);
+    doc.text(`Rapport d'analyse: ${sample.name || "échantillon"}`, 20, 20);
+
+    const splitText = doc.splitTextToSize(sample.analysisReport, 170);
+    doc.text(splitText, 20, 40);
+
+    doc.save(`${sample.name || "sample"}_analysis_report.pdf`);
   };
 
   if (loading) {
@@ -324,7 +339,10 @@ function SampleDetail() {
                       )}
 
                       {sample.status === "Analyzed" && sample.protocolFile && (
-                        <button className="px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center shadow-sm">
+                        <button
+                          className="px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center shadow-sm"
+                          onClick={downloadAnalysisReport}
+                        >
                           <FaDownload className="mr-2" />
                           Download Report
                         </button>
@@ -452,7 +470,7 @@ function SampleDetail() {
                 {/* Analysis Report */}
                 {sample.status === "Analyzed" && sample.analysisReport && (
                   <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-6">
-                    <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
+                    <div className="px-6 py-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
                       <h2 className="text-lg font-semibold text-gray-800 flex items-center">
                         <FaRegClipboard className="mr-2 text-indigo-600" />
                         Analysis Results
@@ -509,10 +527,10 @@ function SampleDetail() {
                                 )}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="mt-4 w-full px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center"
+                                className="mt-4 w-full px-4 py-2.5 bg-yellow-500 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center"
                               >
                                 <FaDownload className="mr-2" />
-                                Download Report
+                                Download Protocole
                               </a>
                             ) : (
                               <p className="mt-4 text-sm text-gray-600">
