@@ -16,6 +16,7 @@ import {
   FaExclamationTriangle,
   FaPlus,
   FaTrash,
+  FaUser,
 } from "react-icons/fa";
 import Header from "../../../components/dashboard/Header";
 import Sidebar from "../../../components/dashboard/Sidebar";
@@ -61,7 +62,7 @@ function ProjectDetailPage() {
     {
       id: "profile",
       label: "Profile",
-      icon: <FaUsers />,
+      icon: <FaUser />,
       navigator: "/dashboard/researcher/profile",
     },
   ];
@@ -709,7 +710,6 @@ function ProjectDetailPage() {
                       ).toLocaleDateString()}
                     </div>
                   ) : (
-                    // Add "Create Publication" link if not published
                     <div className="mt-4">
                       <a
                         href={`/create-publication/${project._id}`}

@@ -12,6 +12,7 @@ import {
   FaTrash,
   FaChevronLeft,
   FaChevronRight,
+  FaUser,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -59,7 +60,7 @@ function ProjectListPage() {
     {
       id: "profile",
       label: "Profile",
-      icon: <FaUsers />,
+      icon: <FaUser />,
       navigator: "/dashboard/researcher/profile",
     },
   ];

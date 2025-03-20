@@ -24,12 +24,14 @@ import CreatePublicationPage from "./pages/dashboard/researcher/CreatePublicatio
 import UpdateProjectPage from "./pages/dashboard/researcher/updateProject/UpdateProjectPage";
 import SampleDetailsPage from "./pages/dashboard/researcher/SampleDetailsPage";
 import UpdateSample from "./pages/dashboard/researcher/updateProject/UpdateSample";
+import ResearcherProfile from "./pages/dashboard/researcher/ResearcherProfile";
 
 // dashboard technicien
 import TechnicianDashboard from "./pages/dashboard/technicien/TechnicianDashboard";
 import SamplesListe from "./pages/dashboard/technicien/SamplesListe";
 import SampleDetail from "./pages/dashboard/technicien/SampleDetail";
 import TechnicianReportPage from "./pages/dashboard/technicien/TechnicianReportPage";
+import TechnicianProfile from "./pages/dashboard/technicien/TechnicienProfile";
 
 // Pages publiques
 import HomePage from "./pages/HomePage";
@@ -172,6 +174,14 @@ function App() {
             </PrivateRoute>
           }
         />
+        <Route
+          path="/dashboard/researcher/profile"
+          element={
+            <PrivateRoute allowedRoles={"chercheur"}>
+              <ResearcherProfile />
+            </PrivateRoute>
+          }
+        />
 
         {/* technicien dashboard */}
         <Route
@@ -205,6 +215,14 @@ function App() {
           element={
             <PrivateRoute allowedRoles={["technicien", "admin"]}>
               <TechnicianReportPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/dashboard/technician/profile"
+          element={
+            <PrivateRoute allowedRoles={"technicien"}>
+              <TechnicianProfile />
             </PrivateRoute>
           }
         />

@@ -10,6 +10,7 @@ import {
   FaClock,
   FaHourglassHalf,
   FaMoneyBillWave,
+  FaUser,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import Header from "../../../components/dashboard/Header";
@@ -64,7 +65,7 @@ function ResearcherDashboard() {
     {
       id: "profile",
       label: "Profile",
-      icon: <FaUsers />,
+      icon: <FaUser />,
       navigator: "/dashboard/researcher/profile",
     },
   ];

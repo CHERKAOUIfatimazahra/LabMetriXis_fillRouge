@@ -65,14 +65,12 @@ function UpdateSample() {
   const [alert, setAlert] = useState({
     show: false,
     message: "",
-    type: "", // success, error, warning
+    type: "",
   });
 
-  // Form validation errors state
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(true);
 
-  // Sample data state
   const [sampleData, setSampleData] = useState({
     name: "",
     description: "",
@@ -87,7 +85,6 @@ function UpdateSample() {
     status: "Pending",
   });
 
-  // Fetch sample data
   useEffect(() => {
     const fetchSample = async () => {
       try {
@@ -105,14 +102,11 @@ function UpdateSample() {
           },
           {
             sampleData: JSON.stringify(sampleData),
-            // Si un fichier est sélectionné
             file: protocolFile,
           }
         );
 
         const sample = response.data;
-
-        // Format dates for input fields (YYYY-MM-DD)
         const formatDate = (dateString) => {
           if (!dateString) return "";
           const date = new Date(dateString);
@@ -132,7 +126,6 @@ function UpdateSample() {
           status: sample.status || "Pending",
         });
 
-        // Set protocol file info if it exists
         if (sample.protocolFile) {
           setCurrentProtocolFile({
             name: sample.protocolFile.fileName,
@@ -178,7 +171,6 @@ function UpdateSample() {
     }
   }, [sampleId]);
 
-  // Validate form
   const validateForm = () => {
     const newErrors = {};
 
@@ -237,7 +229,6 @@ function UpdateSample() {
       });
       setProtocolFile(files[0]);
 
-      // Clear protocol file error if a file is selected
       if (files[0] && errors.protocolFile) {
         setErrors({
           ...errors,
@@ -250,7 +241,6 @@ function UpdateSample() {
         [name]: value,
       });
 
-      // Clear error for the field if it exists
       if (errors[name]) {
         setErrors({
           ...errors,
@@ -260,7 +250,6 @@ function UpdateSample() {
     }
   };
 
-  // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -274,7 +263,6 @@ function UpdateSample() {
         type: "error",
       });
 
-      // Automatically hide alert after 5 seconds
       setTimeout(() => {
         setAlert({ show: false, message: "", type: "" });
       }, 5000);
@@ -285,12 +273,10 @@ function UpdateSample() {
     try {
       const token = localStorage.getItem("token");
 
-      // Create form data if there's a file, otherwise just send JSON
       if (protocolFile) {
         const formData = new FormData();
         formData.append("protocolFile", protocolFile);
 
-        // Append other sample data
         const dataToSend = { ...sampleData };
         delete dataToSend.protocolFile;
         formData.append("sampleData", JSON.stringify(dataToSend));
@@ -308,7 +294,6 @@ function UpdateSample() {
           }
         );
       } else {
-        // Send JSON data without file
         await axios.put(
           `${
             import.meta.env.VITE_API_URL
@@ -322,15 +307,12 @@ function UpdateSample() {
           }
         );
       }
-
-      // Show success alert
       setAlert({
         show: true,
         message: "Échantillon mis à jour avec succès!",
         type: "success",
       });
 
-      // Navigate back after 2 seconds
       setTimeout(() => {
         navigate(`/dashboard/researcher/projects/${projectId}`);
       }, 2000);
@@ -342,14 +324,12 @@ function UpdateSample() {
         type: "error",
       });
 
-      // Automatically hide alert after 5 seconds
       setTimeout(() => {
         setAlert({ show: false, message: "", type: "" });
       }, 5000);
     }
   };
 
-  // Navigation items config
   const navItems = [
     {
       id: "overview",
@@ -383,7 +363,6 @@ function UpdateSample() {
     },
   ];
 
-  // Get file icon based on extension
   const getFileIcon = (fileName) => {
     if (!fileName) return <FaUpload />;
 
@@ -396,7 +375,6 @@ function UpdateSample() {
     return <FaFileAlt />;
   };
 
-  // Alert component
   const AlertComponent = ({ show, message, type }) => {
     if (!show) return null;
 

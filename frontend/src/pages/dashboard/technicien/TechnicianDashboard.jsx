@@ -408,14 +408,12 @@ function TechnicianDashboard() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {storageConditions.map((condition) => {
-                  // Count samples that require the current storage condition
                   const count = samples.filter(
                     (s) =>
                       s.storageConditions &&
                       s.storageConditions.includes(condition)
                   ).length;
 
-                  // Define an icon and color for each condition
                   let icon, color;
                   switch (condition) {
                     case "Refrigerated (2-8°C)":

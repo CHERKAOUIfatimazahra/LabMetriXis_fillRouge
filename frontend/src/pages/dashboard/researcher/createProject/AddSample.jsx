@@ -12,6 +12,7 @@ import {
   FaVial,
   FaExclamationTriangle,
   FaCheckCircle,
+  FaUser,
   FaFilePdf,
   FaFileWord,
   FaFileExcel,
@@ -429,7 +430,7 @@ function AddSample() {
     {
       id: "profile",
       label: "Profile",
-      icon: <FaUsers />,
+      icon: <FaUser />,
       navigator: "/dashboard/researcher/profile",
     },
   ];

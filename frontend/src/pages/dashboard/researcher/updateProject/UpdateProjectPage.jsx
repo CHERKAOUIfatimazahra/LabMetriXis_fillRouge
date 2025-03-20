@@ -44,7 +44,6 @@ function UpdateProjectPage() {
   });
   const [originalData, setOriginalData] = useState(null);
 
-  // Improved fetch data function with better error handling and data normalization
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
@@ -58,7 +57,6 @@ function UpdateProjectPage() {
           Authorization: `Bearer ${token}`,
         };
 
-        // Fetch data in parallel with Promise.all
         const [usersResponse, projectResponse] = await Promise.all([
           axios.get(
             `${import.meta.env.VITE_API_URL}/project/available-team-members`,
@@ -73,7 +71,6 @@ function UpdateProjectPage() {
         const availableUsersData = usersResponse.data || [];
         setAvailableUsers(availableUsersData);
 
-        // Safely access nested project data with optional chaining
         const projectData = projectResponse.data?.project;
         if (!projectData) {
           throw new Error("Project data not found");
@@ -81,13 +78,11 @@ function UpdateProjectPage() {
 
         setOriginalData(projectData);
 
-        // Normalize dates by handling potential null values
         const normalizeDate = (dateString) => {
           if (!dateString) return "";
           return dateString.split("T")[0];
         };
 
-        // Set form data with proper type handling
         setFormData({
           projectName: projectData.projectName || "",
           researchDomain: projectData.researchDomain || "",
@@ -108,7 +103,6 @@ function UpdateProjectPage() {
             : [],
         });
 
-        // Process team members with better ID extraction
         if (
           Array.isArray(projectData.teamMembers) &&
           projectData.teamMembers.length > 0
@@ -118,20 +112,17 @@ function UpdateProjectPage() {
             return member._id || member.$oid || "";
           };
 
-          // Get team members data efficiently
           const teamMembersData = await Promise.all(
             projectData.teamMembers.map(async (member) => {
               const memberId = extractUserId(member);
               if (!memberId) return null;
 
-              // First check available users cache
               const cachedUser = availableUsersData.find(
                 (user) => user._id === memberId || user._id?.$oid === memberId
               );
 
               if (cachedUser) return cachedUser;
 
-              // If not in cache, fetch from API
               try {
                 const userResponse = await axios.get(
                   `${import.meta.env.VITE_API_URL}/users/${memberId}`,
@@ -148,17 +139,10 @@ function UpdateProjectPage() {
             })
           );
 
-          // Filter out null values and set state
           setSelectedTeamMembers(teamMembersData.filter(Boolean));
         }
       } catch (error) {
         console.error("Error fetching project data:", error.message);
-        // Show a more specific error message
-        alert(
-          `Erreur lors du chargement des données: ${
-            error.response?.data?.message || error.message
-          }. Veuillez réessayer.`
-        );
       } finally {
         setIsLoading(false);
       }
@@ -167,7 +151,6 @@ function UpdateProjectPage() {
     fetchData();
   }, [projectId]);
 
-  // Improved form change handler with immutable updates
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData((prevData) => ({
@@ -176,7 +159,6 @@ function UpdateProjectPage() {
     }));
   };
 
-  // Enhanced team member management functions
   const handleAddTeamMember = () => {
     if (!selectedMember) return;
 
@@ -201,7 +183,6 @@ function UpdateProjectPage() {
     );
   };
 
-  // Research domains array
   const researchDomains = [
     "Biologie",
     "Chimie",
@@ -212,7 +193,6 @@ function UpdateProjectPage() {
     "Informatique",
   ];
 
-  // Improved submit handler with better validation and error handling
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -222,7 +202,6 @@ function UpdateProjectPage() {
         throw new Error("No authentication token found");
       }
 
-      // Format team members correctly
       const formattedTeamMembers = selectedTeamMembers.map(
         (member) => member._id
       );
@@ -242,8 +221,7 @@ function UpdateProjectPage() {
         expectedOutcomes: formData.expectedOutcomes,
       };
 
-      // Log the data being sent (for debugging)
-      console.log("Sending data:", finalFormData);
+      // console.log("Sending data:", finalFormData);
 
       const response = await axios.put(
         `${import.meta.env.VITE_API_URL}/project/projects/${projectId}`,

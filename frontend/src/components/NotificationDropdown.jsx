@@ -48,7 +48,14 @@ const NotificationDropdown = ({ isOpen, onClose }) => {
       const token = localStorage.getItem("token");
       if (!token) return;
 
-      await axios.post(
+      // console.log("Marking notification as read:", notificationId);
+
+      if (!notificationId) {
+        console.error("Notification ID is undefined");
+        return;
+      }
+
+      await axios.put(
         `${import.meta.env.VITE_API_URL}/notification/${notificationId}/read`,
         {},
         {
@@ -59,8 +66,8 @@ const NotificationDropdown = ({ isOpen, onClose }) => {
       // Update local state to reflect the change
       setNotifications((prevNotifications) =>
         prevNotifications.map((notification) =>
-          notification.id === notificationId
-            ? { ...notification, read: true }
+          notification._id === notificationId
+            ? { ...notification, isRead: true }
             : notification
         )
       );
@@ -69,11 +76,39 @@ const NotificationDropdown = ({ isOpen, onClose }) => {
     }
   };
 
-  // If dropdown is not open, don't render anything
+  const markAllAsRead = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      await axios.put(
+        `${import.meta.env.VITE_API_URL}/notification/read-all`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      // Update local state to mark all as read
+      setNotifications((prevNotifications) =>
+        prevNotifications.map((notification) => ({
+          ...notification,
+          isRead: true,
+        }))
+      );
+    } catch (error) {
+      console.error("Error marking all notifications as read:", error);
+    } finally {
+      onClose();
+    }
+  };
+
+  // Early return if closed
   if (!isOpen) return null;
 
   return (
     <div className="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg z-50 overflow-hidden">
+      {/* En-tête */}
       <div className="border-b px-4 py-2 flex justify-between items-center">
         <h3 className="font-medium text-gray-800">Notifications</h3>
         <button className="text-gray-500 hover:text-gray-700" onClick={onClose}>
@@ -81,6 +116,7 @@ const NotificationDropdown = ({ isOpen, onClose }) => {
         </button>
       </div>
 
+      {/* Contenu des notifications */}
       <div className="max-h-96 overflow-y-auto">
         {loading ? (
           <div className="p-4 text-center text-gray-500">Chargement...</div>
@@ -91,15 +127,13 @@ const NotificationDropdown = ({ isOpen, onClose }) => {
             Aucune notification
           </div>
         ) : (
-          // Make sure we're mapping over an array
-          Array.isArray(notifications) &&
           notifications.map((notification) => (
             <div
-              key={notification.id}
+              key={notification._id}
               className={`px-4 py-3 border-b hover:bg-gray-50 cursor-pointer ${
-                !notification.read ? "bg-blue-50" : ""
+                !notification.isRead ? "bg-blue-50" : ""
               }`}
-              onClick={() => markAsRead(notification.id)}
+              onClick={() => markAsRead(notification._id)}
             >
               <div className="flex justify-between items-start">
                 <p className="text-sm font-medium text-gray-800">
@@ -117,12 +151,13 @@ const NotificationDropdown = ({ isOpen, onClose }) => {
         )}
       </div>
 
+      {/* Bouton "Tout marquer comme lu" */}
       {notifications.length > 0 && (
         <div className="border-t px-4 py-2">
           <button
             className="text-sm text-blue-600 hover:text-blue-800 w-full text-center"
             onClick={() => {
-              // Mark all as read functionality would go here
+              markAllAsRead();
               onClose();
             }}
           >
