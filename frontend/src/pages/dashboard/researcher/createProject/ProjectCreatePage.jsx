@@ -8,6 +8,7 @@ import {
   FaUsers,
   FaFileAlt,
   FaUserPlus,
+  FaUser,
 } from "react-icons/fa";
 import axios from "axios";
 
@@ -257,7 +258,7 @@ function ProjectCreatePage() {
     {
       id: "profile",
       label: "Profile",
-      icon: <FaUsers />,
+      icon: <FaUser />,
       navigator: "/dashboard/researcher/profile",
     },
   ];

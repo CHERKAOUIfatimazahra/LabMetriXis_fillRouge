@@ -27,6 +27,7 @@ import {
   FaTable,
   FaFilePdf,
   FaHistory,
+  FaUser,
 } from "react-icons/fa";
 import { jsPDF } from "jspdf";
 
@@ -82,7 +83,6 @@ function CreateFinalReportPage() {
     fetchProject();
   }, [projectId]);
 
-  // Function to fetch version
   const fetchVersionHistory = async () => {
     try {
       const response = await axios.get(
@@ -125,6 +125,12 @@ function CreateFinalReportPage() {
       label: "Publications",
       icon: <FaFileAlt />,
       navigator: "/dashboard/researcher/publications",
+    },
+    {
+      id: "profile",
+      label: "Profile",
+      icon: <FaUser />,
+      navigator: "/dashboard/researcher/profile",
     },
   ];
 
