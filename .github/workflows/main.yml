@@ -11,11 +11,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Récupérer le code source
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2️⃣ Configuration de Node.js pour le backend
       - name: Setup Node.js for backend
         uses: actions/setup-node@v2
         with:
@@ -23,30 +22,25 @@ jobs:
           cache: 'npm'
           cache-dependency-path: backend/package-lock.json
 
-      # 3️⃣ Installation des dépendances du backend
       - name: Install backend dependencies
         run: |
           cd backend
           npm install
 
-      # 4️⃣ Exécuter les tests backend
       - name: Run backend tests
         run: |
           cd backend
           npm run test
 
-      # 5️⃣ Configurer Docker Buildx (support multi-plateforme)
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      # 6️⃣ Se connecter à Docker Hub
       - name: Login to Docker Hub
         env:
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
         run: docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
 
-      # 7️⃣ Construire et pousser les images Docker du backend et du frontend
       - name: Build and push backend image
         run: |
           docker build -t cherkaoui97/labmetrixis_fillrouge_backend:latest ./backend
