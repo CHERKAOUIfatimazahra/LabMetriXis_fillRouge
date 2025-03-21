@@ -88,7 +88,7 @@ LabMetriXis offre une plateforme centralisée permettant:
 
 1. Clonez le dépôt
 ```bash
-git clone https://github.com/votre-username/LabMetriXis_fillRouge.git
+git clone https://github.com/CHERKAOUIfatimazahra/LabMetriXis_fillRouge.git
 cd LabMetriXis_fillRouge
 ```
 
