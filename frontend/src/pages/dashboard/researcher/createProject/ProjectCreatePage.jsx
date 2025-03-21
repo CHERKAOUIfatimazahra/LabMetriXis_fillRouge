@@ -227,7 +227,7 @@ function ProjectCreatePage() {
   };
 
   const navigateToAddSample = (projectId) => {
-    window.location.href = `/dashboard/researcher/projects/create/add-sample/${projectId}`;
+    navigate(`/dashboard/researcher/projects/create/add-sample/${projectId}`);
   };
 
   const navItems = [

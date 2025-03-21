@@ -9,56 +9,75 @@ import {
   FaUsers,
   FaUserCog,
   FaClipboardList,
+  FaCalendarAlt,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import Header from "../../../components/dashboard/Header";
 import Sidebar from "../../../components/dashboard/Sidebar";
+
+const StatCard = ({ icon, title, value, color }) => (
+  <div
+    className={`bg-white p-4 rounded-lg shadow-md border-l-4 border-${color}-500 hover:shadow-lg transition-shadow`}
+  >
+    <div className="flex items-center">
+      <div
+        className={`p-3 rounded-full bg-${color}-100 text-${color}-600 mr-4`}
+      >
+        {icon}
+      </div>
+      <div>
+        <p className="text-sm text-gray-500">{title}</p>
+        <p className="text-2xl font-bold text-gray-800">{value}</p>
+      </div>
+    </div>
+  </div>
+);
+
+const StorageCard = ({ condition, count, icon, color }) => (
+  <div
+    className={`bg-${color}-50 p-4 rounded-lg shadow-md border border-${color}-200`}
+  >
+    <div className="flex justify-between items-center">
+      <div>
+        <span className="text-2xl mr-2">{icon}</span>
+        <span className={`font-medium text-${color}-700`}>{condition}</span>
+      </div>
+      <span className={`text-2xl font-bold text-${color}-600`}>{count}</span>
+    </div>
+    <p className="mt-2 text-sm text-gray-600">
+      {count} samples requiring {condition.toLowerCase()} storage
+    </p>
+  </div>
+);
 
 function TechnicianDashboard() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("overview");
   const [samples, setSamples] = useState([]);
   const [recentSamples, setRecentSamples] = useState([]);
+  const [expiringNonAnalyzedSamples, setExpiringNonAnalyzedSamples] = useState(
+    []
+  );
+  const [expiredSamples, setExpiredSamples] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [userName, setUserName] = useState("");
   const [userInitials, setUserInitials] = useState("");
-  const [storageConditions, setStorageConditions] = useState([
-    "Room Temperature",
-    "Refrigerated (2-8°C)",
-    "Frozen (-20°C)",
-    "Ultra-frozen (-80°C)",
-    "Liquid Nitrogen",
-  ]);
-  const [sampleTypes, setSampleTypes] = useState([
-    "Blood",
-    "Tissue",
-    "DNA",
-    "RNA",
-    "Protein",
-    "Cell Culture",
-    "Serum",
-    "Plasma",
-    "Other",
-  ]);
-  const [units, setUnits] = useState([
-    "ml",
-    "µl",
-    "g",
-    "mg",
-    "µg",
-    "cells",
-    "pieces",
-  ]);
+
+  const storageConditions = [
+    { name: "Room Temperature", icon: "🌡️", color: "green" },
+    { name: "Refrigerated (2-8°C)", icon: "❄️", color: "blue" },
+    { name: "Frozen (-20°C)", icon: "❄️❄️", color: "indigo" },
+    { name: "Ultra-frozen (-80°C)", icon: "❄️❄️❄️", color: "purple" },
+    { name: "Liquid Nitrogen", icon: "💧", color: "cyan" },
+  ];
 
   const [stats, setStats] = useState({
     totalSamples: 0,
     pendingSamples: 0,
     inAnalysisSamples: 0,
     analyzedSamples: 0,
-    expiringSoon: 0,
-    maintenanceTasks: 0,
-    equipmentIssues: 0,
+    criticalExpirations: 0,
   });
 
   const navItems = [
@@ -95,45 +114,69 @@ function TechnicianDashboard() {
   ];
 
   const getStatusColor = (status) => {
-    switch (status) {
-      case "Analyzed":
-        return "bg-green-100 text-green-800";
-      case "In Analysis":
-        return "bg-blue-100 text-blue-800";
-      case "Pending":
-        return "bg-yellow-100 text-yellow-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
+    const statusColors = {
+      Analyzed: "bg-green-100 text-green-800",
+      "In Analysis": "bg-blue-100 text-blue-800",
+      Pending: "bg-yellow-100 text-yellow-800",
+    };
+    return statusColors[status] || "bg-gray-100 text-gray-800";
   };
+
+  const getDaysUntilExpiration = (expirationDate) => {
+    if (!expirationDate) return null;
+    const today = new Date();
+    const expDate = new Date(expirationDate);
+    const diffTime = Math.abs(expDate - today);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return expDate > today ? diffDays : -diffDays;
+  };
+
+  const formatDate = (dateString) =>
+    dateString ? new Date(dateString).toLocaleDateString() : "N/A";
 
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
       try {
         const API_URL = `${import.meta.env.VITE_API_URL}/samples`;
-
         const { data: samplesData } = await axios.get(`${API_URL}/samples`, {
           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
         });
 
         setSamples(samplesData);
 
-        const sortedSamples = [...samplesData].sort(
-          (a, b) =>
-            new Date(b.collectionDate || 0) - new Date(a.collectionDate || 0)
+        const sortedByCreationDate = [...samplesData].sort(
+          (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
         );
-        setRecentSamples(sortedSamples.slice(0, 5));
+        setRecentSamples(sortedByCreationDate.slice(0, 5));
 
         const today = new Date();
-        const thirtyDaysFromNow = new Date();
-        thirtyDaysFromNow.setDate(today.getDate() + 30);
+        const fifteenDaysFromNow = new Date();
+        fifteenDaysFromNow.setDate(today.getDate() + 15);
 
-        const expiringSoon = samplesData.filter((sample) => {
+        const expiringNonAnalyzed = samplesData
+          .filter((sample) => {
+            if (!sample.expirationDate) return false;
+            const expirationDate = new Date(sample.expirationDate);
+            return (
+              expirationDate > today &&
+              expirationDate <= fifteenDaysFromNow &&
+              sample.status !== "Analyzed"
+            );
+          })
+          .sort(
+            (a, b) => new Date(a.expirationDate) - new Date(b.expirationDate)
+          );
+
+        setExpiringNonAnalyzedSamples(expiringNonAnalyzed);
+
+        const expired = samplesData.filter((sample) => {
           if (!sample.expirationDate) return false;
           const expirationDate = new Date(sample.expirationDate);
-          return expirationDate > today && expirationDate <= thirtyDaysFromNow;
-        }).length;
+          return expirationDate < today && sample.status !== "Analyzed";
+        });
+
+        setExpiredSamples(expired);
 
         setStats({
           totalSamples: samplesData.length,
@@ -144,7 +187,7 @@ function TechnicianDashboard() {
           ).length,
           analyzedSamples: samplesData.filter((s) => s.status === "Analyzed")
             .length,
-          expiringSync: expiringSoon,
+          criticalExpirations: expired.length,
         });
       } catch (err) {
         setError("Error loading data.");
@@ -159,13 +202,11 @@ function TechnicianDashboard() {
 
   useEffect(() => {
     const userData = localStorage.getItem("user");
-
     if (userData) {
       try {
         const user = JSON.parse(userData);
         const fullName = user.name || "Utilisateur";
         setUserName(fullName);
-
         const initials = fullName
           .split(" ")
           .map((n) => n[0])
@@ -177,9 +218,6 @@ function TechnicianDashboard() {
       }
     }
   }, []);
-
-  const formatDate = (dateString) =>
-    dateString ? new Date(dateString).toLocaleDateString() : "N/A";
 
   if (loading) {
     return (
@@ -243,68 +281,125 @@ function TechnicianDashboard() {
 
             {/* Statistics Section */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-              <div className="bg-white p-4 rounded-lg shadow-md border-l-4 border-blue-500 hover:shadow-lg transition-shadow">
-                <div className="flex items-center">
-                  <div className="p-3 rounded-full bg-blue-100 text-blue-600 mr-4">
-                    <FaVial size={24} />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Total Samples</p>
-                    <p className="text-2xl font-bold text-gray-800">
-                      {stats.totalSamples}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white p-4 rounded-lg shadow-md border-l-4 border-yellow-500 hover:shadow-lg transition-shadow">
-                <div className="flex items-center">
-                  <div className="p-3 rounded-full bg-yellow-100 text-yellow-600 mr-4">
-                    <FaFlask size={24} />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Pending Analysis</p>
-                    <p className="text-2xl font-bold text-gray-800">
-                      {stats.pendingSamples}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white p-4 rounded-lg shadow-md border-l-4 border-green-500 hover:shadow-lg transition-shadow">
-                <div className="flex items-center">
-                  <div className="p-3 rounded-full bg-green-100 text-green-600 mr-4">
-                    <FaClipboardCheck size={24} />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Analyzed</p>
-                    <p className="text-2xl font-bold text-gray-800">
-                      {stats.analyzedSamples}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white p-4 rounded-lg shadow-md border-l-4 border-red-500 hover:shadow-lg transition-shadow">
-                <div className="flex items-center">
-                  <div className="p-3 rounded-full bg-red-100 text-red-600 mr-4">
-                    <FaExclamationTriangle size={24} />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Expiring Soon</p>
-                    <p className="text-2xl font-bold text-gray-800">
-                      {stats.expiringSync}
-                    </p>
-                  </div>
-                </div>
-              </div>
+              <StatCard
+                icon={<FaVial size={24} />}
+                title="Total Samples"
+                value={stats.totalSamples}
+                color="blue"
+              />
+              <StatCard
+                icon={<FaFlask size={24} />}
+                title="Pending Analysis"
+                value={stats.pendingSamples}
+                color="yellow"
+              />
+              <StatCard
+                icon={<FaClipboardCheck size={24} />}
+                title="Analyzed"
+                value={stats.analyzedSamples}
+                color="green"
+              />
+              <StatCard
+                icon={<FaExclamationTriangle size={24} />}
+                title="Expiring Soon"
+                value={stats.criticalExpirations}
+                color="red"
+              />
             </div>
+
+            {/* Expired Samples Section */}
+            {expiredSamples.length > 0 && (
+              <div className="mb-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-bold text-red-800 flex items-center">
+                    <FaExclamationTriangle className="mr-2" /> Expired Samples
+                    Requiring Attention
+                  </h2>
+                </div>
+                <div className="bg-red-100 rounded-lg shadow overflow-x-auto border border-red-300">
+                  <table className="min-w-full divide-y divide-red-300">
+                    <thead className="bg-red-200">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-red-800 uppercase tracking-wider">
+                          ID
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-red-800 uppercase tracking-wider">
+                          Name
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-red-800 uppercase tracking-wider">
+                          Type
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-red-800 uppercase tracking-wider">
+                          Expiration Date
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-red-800 uppercase tracking-wider">
+                          Days Expired
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-red-800 uppercase tracking-wider">
+                          Status
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-red-800 uppercase tracking-wider">
+                          Action
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-red-200">
+                      {expiredSamples.slice(0, 5).map((sample) => {
+                        const daysUntil = getDaysUntilExpiration(
+                          sample.expirationDate
+                        );
+                        return (
+                          <tr key={sample._id} className="hover:bg-red-50">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-red-800">
+                              {sample.identification}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
+                              {sample.name}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {sample.type}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {formatDate(sample.expirationDate)}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-red-800 font-bold">
+                              {Math.abs(daysUntil)} days ago
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span
+                                className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(
+                                  sample.status
+                                )}`}
+                              >
+                                {sample.status}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              <button
+                                onClick={() =>
+                                  navigate(
+                                    `/dashboard/technician/samples/${sample._id}`
+                                  )
+                                }
+                                className="bg-red-800 text-white px-3 py-1 rounded hover:bg-red-900 transition-colors"
+                              >
+                                Urgent Action
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
 
             {/* Recent Samples Section */}
             <div className="mb-6">
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-gray-800">
-                  Recent Samples
+                <h2 className="text-xl font-bold text-gray-800 flex items-center">
+                  <FaCalendarAlt className="mr-2" /> Recently Created Samples
                 </h2>
                 <button
                   onClick={() => navigate("/dashboard/technician/samples")}
@@ -317,47 +412,29 @@ function TechnicianDashboard() {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         ID
                       </th>
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Name
                       </th>
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Type
                       </th>
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        Expiration Date
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Created Date
                       </th>
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Status
                       </th>
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercas tracking-wider"
-                      >
-                        Create By
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Created By
                       </th>
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Project
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Action
                       </th>
                     </tr>
                   </thead>
@@ -374,7 +451,7 @@ function TechnicianDashboard() {
                           {sample.type}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {formatDate(sample.expirationDate)}
+                          {formatDate(sample.createdAt)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span
@@ -387,10 +464,22 @@ function TechnicianDashboard() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {sample.createdBy?.name}
-                          <p>{sample.createdBy?.email}</p>
+                          <p className="text-xs">{sample.createdBy?.email}</p>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {sample.project?.projectName || "N/A"}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <button
+                            onClick={() =>
+                              navigate(
+                                `/dashboard/technician/samples/${sample._id}`
+                              )
+                            }
+                            className="text-blue-600 hover:text-blue-800"
+                          >
+                            View
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -411,59 +500,17 @@ function TechnicianDashboard() {
                   const count = samples.filter(
                     (s) =>
                       s.storageConditions &&
-                      s.storageConditions.includes(condition)
+                      s.storageConditions.includes(condition.name)
                   ).length;
 
-                  let icon, color;
-                  switch (condition) {
-                    case "Refrigerated (2-8°C)":
-                      icon = "❄️";
-                      color = "blue";
-                      break;
-                    case "Room Temperature":
-                      icon = "🌡️";
-                      color = "green";
-                      break;
-                    case "Frozen (-20°C)":
-                      icon = "❄️❄️";
-                      color = "indigo";
-                      break;
-                    case "Ultra-frozen (-80°C)":
-                      icon = "❄️❄️❄️";
-                      color = "purple";
-                      break;
-                    case "Liquid Nitrogen":
-                      icon = "💧";
-                      color = "cyan";
-                      break;
-                    default:
-                      icon = "🔒";
-                      color = "gray";
-                  }
-
                   return (
-                    <div
-                      key={condition}
-                      className={`bg-${color}-50 p-4 rounded-lg shadow-md border border-${color}-200`}
-                    >
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <span className="text-2xl mr-2">{icon}</span>
-                          <span className={`font-medium text-${color}-700`}>
-                            {condition}
-                          </span>
-                        </div>
-                        <span
-                          className={`text-2xl font-bold text-${color}-600`}
-                        >
-                          {count}
-                        </span>
-                      </div>
-                      <p className="mt-2 text-sm text-gray-600">
-                        {count} samples requiring {condition.toLowerCase()}{" "}
-                        storage
-                      </p>
-                    </div>
+                    <StorageCard
+                      key={condition.name}
+                      condition={condition.name}
+                      count={count}
+                      icon={condition.icon}
+                      color={condition.color}
+                    />
                   );
                 })}
               </div>

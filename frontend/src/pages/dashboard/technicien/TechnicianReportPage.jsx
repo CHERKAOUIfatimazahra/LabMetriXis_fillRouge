@@ -23,7 +23,6 @@ import {
   FaAlignLeft,
   FaAlignCenter,
   FaAlignRight,
-  FaUpload,
   FaImage,
   FaTable,
   FaFilePdf,
@@ -40,9 +39,6 @@ function TechnicianReportPage() {
   const [formData, setFormData] = useState({
     analysisReport: "",
   });
-  const [autoSaveStatus, setAutoSaveStatus] = useState("Sauvegardé");
-  const fileInputRef = useRef(null);
-  const textareaRef = useRef(null);
 
   useEffect(() => {
     const fetchSample = async () => {
@@ -109,7 +105,7 @@ function TechnicianReportPage() {
     setSubmitting(true);
 
     try {
-      const response = await axios.post(
+      await axios.post(
         `${
           import.meta.env.VITE_API_URL
         }/samples/samples/${sampleId}/analysis-report`,
@@ -130,26 +126,6 @@ function TechnicianReportPage() {
       toast.error("Erreur lors de la soumission du rapport d'analyse");
       setSubmitting(false);
     }
-  };
-
-  const handleUploadReport = () => {
-    fileInputRef.current.click();
-  };
-
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      setFormData({
-        ...formData,
-        analysisReport: event.target.result,
-      });
-      toast.success(`Fichier "${file.name}" importé avec succès`);
-      setAutoSaveStatus("Non sauvegardé");
-    };
-    reader.readAsText(file);
   };
 
   const generatePDF = () => {
@@ -182,9 +158,7 @@ function TechnicianReportPage() {
   };
 
   const formatText = (format) => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-
+    
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
     const selectedText = formData.analysisReport.substring(start, end);
@@ -236,15 +210,6 @@ function TechnicianReportPage() {
       analysisReport: newContent,
     });
 
-    setTimeout(() => {
-      textarea.focus();
-      textarea.setSelectionRange(
-        start + cursorOffset,
-        start + formattedText.length - cursorOffset
-      );
-    }, 0);
-
-    setAutoSaveStatus("Non sauvegardé");
   };
 
   return (
@@ -323,20 +288,6 @@ function TechnicianReportPage() {
                           Gestion du document
                         </label>
                         <div className="flex gap-2 h-full">
-                          <button
-                            type="button"
-                            onClick={handleUploadReport}
-                            className="flex-1 flex items-center justify-center gap-2 rounded-md border border-gray-300 bg-white py-2 px-3 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
-                          >
-                            <FaUpload /> Importer texte
-                          </button>
-                          <input
-                            type="file"
-                            ref={fileInputRef}
-                            onChange={handleFileChange}
-                            className="hidden"
-                            accept=".txt,.md,.doc,.docx"
-                          />
                           <button
                             type="button"
                             onClick={generatePDF}
@@ -467,7 +418,6 @@ function TechnicianReportPage() {
                     {/* Text area for analysis report */}
                     <div className="relative">
                       <textarea
-                        ref={textareaRef}
                         name="analysisReport"
                         id="analysisReport"
                         rows={20}
@@ -491,10 +441,11 @@ function TechnicianReportPage() {
                       <button
                         type="submit"
                         className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                        disabled={submitting}
                       >
                         <span className="flex items-center">
                           <FaPaperPlane className="mr-2" />
-                          Soumettre rapport
+                          {submitting ? "Soumission..." : "Soumettre rapport"}
                         </span>
                       </button>
                     </div>

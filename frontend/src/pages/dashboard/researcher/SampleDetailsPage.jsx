@@ -12,6 +12,10 @@ import {
   FaDownload,
   FaDna,
   FaCheckCircle,
+  FaChartLine,
+  FaClipboardList,
+  FaUsers,
+
 } from "react-icons/fa";
 import Header from "../../../components/dashboard/Header";
 import Sidebar from "../../../components/dashboard/Sidebar";
@@ -21,8 +25,6 @@ function SampleDetailsPage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("samples");
   const [sample, setSample] = useState(null);
-  const [technician, setTechnician] = useState(null);
-  const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -38,13 +40,13 @@ function SampleDetailsPage() {
     {
       id: "overview",
       label: "Overview",
-      icon: <FaFlask />,
+      icon: <FaChartLine />,
       navigator: "/dashboard/researcher",
     },
     {
       id: "projects",
       label: "Projects",
-      icon: <FaFileAlt />,
+      icon: <FaClipboardList />,
       navigator: "/dashboard/researcher/projects",
     },
     {
@@ -52,6 +54,24 @@ function SampleDetailsPage() {
       label: "Samples",
       icon: <FaVial />,
       navigator: "/dashboard/researcher/samples",
+    },
+    {
+      id: "team",
+      label: "Research Team",
+      icon: <FaUsers />,
+      navigator: "/dashboard/researcher/team",
+    },
+    {
+      id: "publications",
+      label: "Publications",
+      icon: <FaFileAlt />,
+      navigator: "/dashboard/researcher/publications",
+    },
+    {
+      id: "profile",
+      label: "Profile",
+      icon: <FaUser />,
+      navigator: "/dashboard/researcher/profile",
     },
   ];
 
@@ -90,10 +110,6 @@ function SampleDetailsPage() {
     }
   };
 
-  const handleViewReport = (sampleId) => {
-    navigate(`/dashboard/researcher/samples/report/${sampleId}`);
-  };
-
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
@@ -108,19 +124,8 @@ function SampleDetailsPage() {
           },
         });
 
-        console.log("Response Data:", response.data);
+        // console.log("Response Data:", response.data);
         setSample(response.data);
-
-        setTechnician({
-          name: "Dr. Jane Smith",
-          position: "Senior Lab Technician",
-          email: "jane.smith@example.com",
-        });
-
-        setProject({
-          projectName: "Cancer Research Study Phase II",
-          researchDomain: "Oncology",
-        });
       } catch (err) {
         console.error("Error fetching data:", err.response || err);
         setError("Error loading sample data.");
@@ -145,32 +150,16 @@ function SampleDetailsPage() {
     );
   }
 
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center text-red-600 bg-red-100 px-6 py-4 rounded-lg shadow">
-          <p className="font-medium">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="mt-4 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition-colors"
-          >
-            Retry
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   if (!sample) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center text-gray-600 bg-gray-100 px-6 py-4 rounded-lg shadow">
           <p className="font-medium">Sample not found.</p>
           <button
-            onClick={() => navigate("/dashboard/researcher/samples")}
+            onClick={() => navigate("/dashboard/researcher/projects")}
             className="mt-4 bg-teal-600 text-white px-4 py-2 rounded hover:bg-teal-700 transition-colors"
           >
-            Back to Samples
+            Back to projects list
           </button>
         </div>
       </div>
@@ -333,10 +322,12 @@ function SampleDetailsPage() {
                       Project Information
                     </h4>
                     <p className="font-bold text-gray-800 text-lg">
-                      {project.projectName}
+                      {sample?.project?.projectName ||
+                        "Project name not available"}
                     </p>
                     <div className="mt-2 inline-block px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
-                      {project.researchDomain}
+                      {sample?.project?.researchDomain ||
+                        "Domain not specified"}
                     </div>
                     {/* Protocol File */}
                     {sample.protocolFile && (
@@ -387,7 +378,7 @@ function SampleDetailsPage() {
                             </>
                           ) : (
                             <p className="text-sm text-gray-600 truncate max-w-xs">
-                              Aucun fichier
+                              No protocol file available
                             </p>
                           )}
                         </div>
@@ -402,18 +393,21 @@ function SampleDetailsPage() {
                     </h4>
                     <div className="flex items-center">
                       <div className="h-14 w-14 rounded-full bg-gradient-to-br from-teal-500 to-teal-700 flex items-center justify-center text-white font-bold text-lg shadow-md">
-                        {technician?.name?.charAt(0) || "T"}
+                        {sample.technicianResponsible?.name?.charAt(0) || "T"}
                       </div>
                       <div className="ml-4">
                         <p className="font-medium text-gray-800">
-                          {technician?.name}
+                          {sample.technicianResponsible?.name || "Not assigned"}
                         </p>
                         <p className="text-sm text-gray-600">
-                          {technician?.position}
+                          {sample.technicianResponsible?.email ||
+                            "No email provided"}
                         </p>
-                        <p className="text-sm text-teal-600">
-                          {technician?.email}
-                        </p>
+                        {sample.technicianResponsible?.specialty && (
+                          <p className="text-sm text-teal-600">
+                            {sample.technicianResponsible.specialty}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -487,41 +481,15 @@ function SampleDetailsPage() {
               {/* Analysis Notes */}
               <div className="mt-8">
                 <h4 className="font-medium text-gray-700 mb-2">
-                  Analysis Notes
+                  Analysis report
                 </h4>
                 <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                   <p className="text-gray-700">
-                    {sample.notes || "No analysis notes available yet."}
+                    {sample.analysisReport ||
+                      "No analysis report available at the moment."}
                   </p>
                 </div>
               </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex flex-wrap gap-3 justify-end">
-              {sample.status === "Analyzed" && (
-                <button
-                  onClick={() => handleViewReport(sample._id)}
-                  className="px-4 py-2 bg-gradient-to-r from-teal-600 to-teal-700 text-white rounded-lg shadow-md hover:from-teal-700 hover:to-teal-800 transition-colors flex items-center"
-                >
-                  <FaFileAlt className="mr-2" />
-                  View Report
-                </button>
-              )}
-
-              <button className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg shadow-md hover:from-blue-700 hover:to-blue-800 transition-colors flex items-center">
-                <FaDownload className="mr-2" />
-                Export Data
-              </button>
-
-              <button
-                onClick={() =>
-                  navigate(`/dashboard/researcher/samples/edit/${sampleId}`)
-                }
-                className="px-4 py-2 bg-gradient-to-r from-gray-600 to-gray-700 text-white rounded-lg shadow-md hover:from-gray-700 hover:to-gray-800 transition-colors"
-              >
-                Edit Sample
-              </button>
             </div>
           </main>
         </div>

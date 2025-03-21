@@ -88,18 +88,19 @@ function ProjectListPage() {
     return "bg-yellow-500";
   };
 
+  // Gestion des événements
   const handleSearch = (e) => {
     setSearchTerm(e.target.value);
-    setPagination((prev) => ({ ...prev, currentPage: 1 }));
+    setPagination({ ...pagination, currentPage: 1 });
   };
 
   const handleStatusFilter = (e) => {
     setFilterStatus(e.target.value);
-    setPagination((prev) => ({ ...prev, currentPage: 1 }));
+    setPagination({ ...pagination, currentPage: 1 });
   };
 
   const handlePageChange = (newPage) => {
-    setPagination((prev) => ({ ...prev, currentPage: newPage }));
+    setPagination({ ...pagination, currentPage: newPage });
     document
       .querySelector(".projects-table-container")
       ?.scrollIntoView({ behavior: "smooth" });
@@ -122,11 +123,11 @@ function ProjectListPage() {
         } else if (response.data.projects) {
           setProjects(response.data.projects);
         } else {
-          console.error("Unexpected response format:", response.data);
+          console.error("Format de réponse inattendu:", response.data);
           setProjects([]);
         }
       } catch (error) {
-        console.error("Error fetching projects:", error);
+        console.error("Erreur lors de la récupération des projets:", error);
       } finally {
         setIsLoading(false);
       }
@@ -135,29 +136,31 @@ function ProjectListPage() {
     fetchProjects();
   }, []);
 
+  // Filtrage des projets
   const filteredProjects = projects.filter((project) => {
     const matchesSearch =
-      project.projectName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      project.description?.toLowerCase().includes(searchTerm.toLowerCase());
+      project.projectName?.toLowerCase().includes(searchTerm.toLowerCase());
+
     const matchesStatus =
       filterStatus === "All" || project.status === filterStatus;
+
     return matchesSearch && matchesStatus;
   });
 
   useEffect(() => {
-    setPagination((prev) => {
-      const newTotalPages = Math.ceil(
-        filteredProjects.length / prev.projectsPerPage
-      );
-      return prev.totalPages !== newTotalPages
-        ? { ...prev, totalPages: newTotalPages }
-        : prev;
-    });
+    const newTotalPages = Math.ceil(
+      filteredProjects.length / pagination.projectsPerPage
+    );
+
+    if (pagination.totalPages !== newTotalPages) {
+      setPagination({ ...pagination, totalPages: newTotalPages });
+    }
   }, [filteredProjects]);
 
   const indexOfLastProject =
     pagination.currentPage * pagination.projectsPerPage;
   const indexOfFirstProject = indexOfLastProject - pagination.projectsPerPage;
+
   const currentProjects = filteredProjects.slice(
     indexOfFirstProject,
     indexOfLastProject
@@ -170,6 +173,7 @@ function ProjectListPage() {
 
   const handleDeleteProject = async (projectId) => {
     if (!window.confirm("Voulez-vous vraiment supprimer ce projet ?")) return;
+
     try {
       await axios.delete(
         `${import.meta.env.VITE_API_URL}/project/projects/${projectId}`,
@@ -179,28 +183,33 @@ function ProjectListPage() {
           },
         }
       );
-      alert("Projet supprimé avec succès !");
+
+      setProjects(projects.filter((project) => project._id !== projectId));
+      setPagination({ ...pagination, currentPage: 1 });
     } catch (error) {
-      console.error("Error deleting project:", error);
+      console.error("Erreur lors de la suppression:", error);
       alert("Échec de la suppression !");
     }
   };
 
-  // Loading state
+  // Affichage pendant le chargement
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="inline-block w-16 h-16 border-t-4 border-teal-600 border-solid rounded-full animate-spin"></div>
-          <p className="mt-4 text-teal-800 font-medium">Loading projects...</p>
+          <p className="mt-4 text-teal-800 font-medium">
+            Chargement des projets...
+          </p>
         </div>
       </div>
     );
   }
 
+  // Rendu principal
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      {/* Header */}
+      {/* En-tête */}
       <Header
         title="Research Lab Portal"
         userName="Dr. Roberts"
@@ -212,7 +221,7 @@ function ProjectListPage() {
 
       <div className="container mx-auto px-4 py-6">
         <div className="flex flex-col md:flex-row gap-6">
-          {/* Sidebar */}
+          {/* Barre latérale */}
           <div>
             <Sidebar
               activeTab={activeTab}
@@ -222,46 +231,46 @@ function ProjectListPage() {
             />
           </div>
 
-          {/* Main Content */}
+          {/* Contenu principal */}
           <main className="flex-1">
             <div className="bg-white rounded-lg shadow-xl p-6 border border-gray-100">
-              {/* Header & Controls */}
+              {/* En-tête et contrôles */}
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                 <h1 className="text-2xl font-bold text-teal-800">
                   <span className="border-b-4 border-teal-500 pb-1">
-                    Research Projects
+                    Projets de recherche
                   </span>
                 </h1>
 
                 <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-                  {/* Search */}
+                  {/* Barre de recherche */}
                   <div className="relative flex-grow">
                     <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                     <input
                       type="text"
-                      placeholder="Search projects..."
+                      placeholder="Rechercher des projets..."
                       value={searchTerm}
                       onChange={handleSearch}
                       className="pl-10 pr-4 py-2 w-full bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all duration-300"
                     />
                   </div>
 
-                  {/* Filter */}
+                  {/* Filtre par statut */}
                   <div className="relative">
                     <select
                       value={filterStatus}
                       onChange={handleStatusFilter}
                       className="appearance-none pl-10 pr-10 py-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all duration-300"
                     >
-                      <option value="All">All Status</option>
-                      <option value="Active">Active</option>
-                      <option value="Planning">Planning</option>
-                      <option value="Completed">Completed</option>
+                      <option value="All">Tous les statuts</option>
+                      <option value="Active">Actif</option>
+                      <option value="Planning">Planification</option>
+                      <option value="Completed">Terminé</option>
                     </select>
                     <FaFilter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                   </div>
 
-                  {/* Add New Project */}
+                  {/* Bouton pour ajouter un nouveau projet */}
                   <button
                     onClick={() =>
                       navigate("/dashboard/researcher/projects/create")
@@ -269,30 +278,30 @@ function ProjectListPage() {
                     className="bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white px-4 py-2 rounded-lg flex items-center justify-center shadow-md transition-all duration-300"
                   >
                     <FaPlus className="w-4 h-4 mr-2" />
-                    New Project
+                    Nouveau Projet
                   </button>
                 </div>
               </div>
 
-              {/* Projects Table */}
+              {/* Tableau des projets */}
               <div className="overflow-x-auto bg-white rounded-lg shadow-sm border border-gray-100 projects-table-container">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Project Name
+                        Nom du projet
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Status
+                        Statut
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Team Lead
+                        Chef d'équipe
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Timeline
+                        Calendrier
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Progress
+                        Progression
                       </th>
                       <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Actions
@@ -306,7 +315,7 @@ function ProjectListPage() {
                           key={project._id}
                           className="hover:bg-gray-50 transition-colors duration-150"
                         >
-                          {/* Project Name */}
+                          {/* Nom du projet */}
                           <td className="px-6 py-4">
                             <div className="flex items-start">
                               <div className="flex-shrink-0 h-10 w-10 rounded-lg bg-teal-100 flex items-center justify-center text-teal-600">
@@ -324,7 +333,7 @@ function ProjectListPage() {
                             </div>
                           </td>
 
-                          {/* Status */}
+                          {/* Statut */}
                           <td className="px-6 py-4">
                             <span
                               className={`px-3 py-1 text-xs rounded-full ${getStatusColor(
@@ -335,7 +344,7 @@ function ProjectListPage() {
                             </span>
                           </td>
 
-                          {/* Team Lead */}
+                          {/* Chef d'équipe */}
                           <td className="px-6 py-4">
                             <div className="flex items-center">
                               <div className="flex-shrink-0 h-8 w-8 bg-teal-200 text-teal-600 rounded-full flex items-center justify-center">
@@ -350,17 +359,17 @@ function ProjectListPage() {
                               </div>
                               <div className="ml-3">
                                 <div className="text-sm font-medium text-gray-900">
-                                  {project.teamLead?.name || "Unassigned"}
+                                  {project.teamLead?.name || "Non assigné"}
                                 </div>
                               </div>
                             </div>
                           </td>
 
-                          {/* Timeline */}
+                          {/* Calendrier */}
                           <td className="px-6 py-4">
                             <div className="flex flex-col">
                               <div className="flex items-center text-xs text-gray-700">
-                                <span className="font-medium">Start:</span>
+                                <span className="font-medium">Début:</span>
                                 <span className="ml-2">
                                   {project.startDate
                                     ? new Date(
@@ -370,7 +379,7 @@ function ProjectListPage() {
                                 </span>
                               </div>
                               <div className="flex items-center text-xs text-gray-700 mt-1">
-                                <span className="font-medium">End:</span>
+                                <span className="font-medium">Fin:</span>
                                 <span className="ml-2">
                                   {project.deadline
                                     ? new Date(
@@ -382,7 +391,7 @@ function ProjectListPage() {
                             </div>
                           </td>
 
-                          {/* Progress */}
+                          {/* Progression */}
                           <td className="px-6 py-4">
                             <div className="w-full">
                               <div className="flex justify-between mb-1">
@@ -440,10 +449,11 @@ function ProjectListPage() {
                           <div className="flex flex-col items-center justify-center">
                             <FaClipboardList className="text-gray-300 text-5xl mb-3" />
                             <p className="text-gray-500 font-medium">
-                              No projects found
+                              Aucun projet trouvé
                             </p>
                             <p className="text-gray-400 text-sm mt-1">
-                              Try adjusting your search or filter criteria
+                              Essayez d'ajuster vos critères de recherche ou
+                              filtre
                             </p>
                           </div>
                         </td>
@@ -457,9 +467,9 @@ function ProjectListPage() {
               {pagination.totalPages > 1 && (
                 <div className="flex justify-between items-center mt-6">
                   <div className="text-sm text-gray-500">
-                    Showing {indexOfFirstProject + 1} to{" "}
-                    {Math.min(indexOfLastProject, filteredProjects.length)} of{" "}
-                    {filteredProjects.length} projects
+                    Affichage de {indexOfFirstProject + 1} à{" "}
+                    {Math.min(indexOfLastProject, filteredProjects.length)} sur{" "}
+                    {filteredProjects.length} projets
                   </div>
                   <div className="flex space-x-1">
                     <button

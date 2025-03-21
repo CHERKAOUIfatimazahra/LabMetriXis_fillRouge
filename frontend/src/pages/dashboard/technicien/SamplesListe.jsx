@@ -5,7 +5,6 @@ import {
   FaSearch,
   FaFilter,
   FaEye,
-  FaDownload,
   FaChevronLeft,
   FaChevronRight,
   FaClipboardList,
@@ -410,14 +409,6 @@ function SamplesList() {
                             >
                               <FaEye className="inline" />
                             </button>
-                            {sample.status === "Analyzed" && (
-                              <button
-                                className="text-gray-600 hover:text-gray-900"
-                                title="Download Sample Report"
-                              >
-                                <FaDownload className="inline" />
-                              </button>
-                            )}
                           </td>
                         </tr>
                       ))

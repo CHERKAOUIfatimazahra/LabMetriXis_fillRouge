@@ -573,7 +573,10 @@ exports.uploadReport = async (req, res) => {
 exports.getSampleById = async (req, res) => {
   try {
     const { sampleId } = req.params;
-    const sample = await Sample.findById(sampleId);
+    const sample = await Sample.findById(sampleId)
+      .populate("technicianResponsible", "name email institution")
+      .populate("project", "projectName researchDomain")
+      .exec();
     if (!sample) {
       return res.status(404).json({ message: "Sample not found" });
     }

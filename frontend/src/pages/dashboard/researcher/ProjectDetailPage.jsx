@@ -7,11 +7,9 @@ import {
   FaUsers,
   FaFileAlt,
   FaCalendarAlt,
-  FaDollarSign,
   FaFlask,
   FaEdit,
   FaArrowLeft,
-  FaFileDownload,
   FaBuilding,
   FaExclamationTriangle,
   FaPlus,
@@ -443,10 +441,9 @@ function ProjectDetailPage() {
                 <div className="border-t pt-4">
                   <h3 className="font-semibold text-teal-700 mb-2">Budget</h3>
                   <div className="flex items-center">
-                    <FaDollarSign className="text-teal-600 mr-2" />
                     <span className="text-gray-700 font-medium">
                       {project.budget
-                        ? project.budget.toLocaleString() + " €"
+                        ? project.budget.toLocaleString() + " DH"
                         : "Non spécifié"}
                     </span>
                   </div>
@@ -643,19 +640,6 @@ function ProjectDetailPage() {
                               </span>
                             </td>
                             <td className="px-3 py-2 whitespace-nowrap">
-                              {sample.status === "Analyzed" && (
-                                <button
-                                  onClick={() =>
-                                    navigate(
-                                      `/dashboard/researcher/projects/${projectId}/samples/${sample._id}/upload-report`
-                                    )
-                                  }
-                                  className="text-teal-600 hover:bg-teal-50 p-2 rounded-full"
-                                  title="Télécharger le rapport"
-                                >
-                                  <FaFileDownload />
-                                </button>
-                              )}
                               {/* update button */}
                               <button
                                 onClick={() =>
@@ -729,10 +713,6 @@ function ProjectDetailPage() {
                 <div>
                   <span className="font-medium">Créé le:</span>{" "}
                   {new Date(project.createdAt).toLocaleDateString()}
-                </div>
-                <div>
-                  <span className="font-medium">Dernière mise à jour:</span>{" "}
-                  {new Date(project.updatedAt).toLocaleDateString()}
                 </div>
               </div>
             </div>

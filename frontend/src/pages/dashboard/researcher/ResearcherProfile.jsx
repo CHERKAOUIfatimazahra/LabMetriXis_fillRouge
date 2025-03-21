@@ -206,44 +206,6 @@ function ResearcherProfile() {
                 </div>
               </div>
             </div>
-
-            {/* Research Stats */}
-            <div className="bg-white rounded-lg shadow-xl p-6 border border-gray-100">
-              <h3 className="text-xl font-semibold text-teal-800 mb-4 border-b-2 border-teal-200 pb-2">
-                Research Statistics
-              </h3>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-gradient-to-br from-teal-50 to-teal-100 p-4 rounded-lg border border-teal-200 hover:shadow-md transition-shadow">
-                  <div className="text-center">
-                    <p className="text-sm text-teal-600 font-medium">
-                      Active Projects
-                    </p>
-                    <p className="text-3xl font-bold text-teal-800 mt-2">12</p>
-                  </div>
-                </div>
-
-                <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200 hover:shadow-md transition-shadow">
-                  <div className="text-center">
-                    <p className="text-sm text-blue-600 font-medium">
-                      Publications
-                    </p>
-                    <p className="text-3xl font-bold text-blue-800 mt-2">24</p>
-                  </div>
-                </div>
-
-                <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border border-purple-200 hover:shadow-md transition-shadow">
-                  <div className="text-center">
-                    <p className="text-sm text-purple-600 font-medium">
-                      Research Impact
-                    </p>
-                    <p className="text-3xl font-bold text-purple-800 mt-2">
-                      8.4
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
           </main>
         </div>
       </div>
