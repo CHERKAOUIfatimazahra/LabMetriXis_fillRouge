@@ -13,9 +13,6 @@ import {
   FaExclamationTriangle,
   FaCheckCircle,
   FaUser,
-  FaFilePdf,
-  FaFileWord,
-  FaFileExcel,
   FaInfo,
 } from "react-icons/fa";
 import axios from "axios";

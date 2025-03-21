@@ -7,7 +7,6 @@ const NotificationDropdown = ({ isOpen, onClose }) => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Only fetch notifications when the dropdown is open
     if (isOpen) {
       fetchNotifications();
     }
@@ -32,7 +31,6 @@ const NotificationDropdown = ({ isOpen, onClose }) => {
         }
       );
 
-      // Ensure we're setting an array, even if the API returns something unexpected
       setNotifications(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error("Error fetching notifications:", error);
@@ -48,8 +46,6 @@ const NotificationDropdown = ({ isOpen, onClose }) => {
       const token = localStorage.getItem("token");
       if (!token) return;
 
-      // console.log("Marking notification as read:", notificationId);
-
       if (!notificationId) {
         console.error("Notification ID is undefined");
         return;
@@ -63,7 +59,6 @@ const NotificationDropdown = ({ isOpen, onClose }) => {
         }
       );
 
-      // Update local state to reflect the change
       setNotifications((prevNotifications) =>
         prevNotifications.map((notification) =>
           notification._id === notificationId
@@ -89,7 +84,6 @@ const NotificationDropdown = ({ isOpen, onClose }) => {
         }
       );
 
-      // Update local state to mark all as read
       setNotifications((prevNotifications) =>
         prevNotifications.map((notification) => ({
           ...notification,
@@ -103,7 +97,6 @@ const NotificationDropdown = ({ isOpen, onClose }) => {
     }
   };
 
-  // Early return if closed
   if (!isOpen) return null;
 
   return (

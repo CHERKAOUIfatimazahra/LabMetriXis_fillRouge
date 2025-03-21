@@ -41,7 +41,7 @@ const HomePage = () => {
         `${import.meta.env.VITE_API_URL}/contactus/contactus`,
         formData
       );
-      console.log(responce);
+      // console.log(responce);
     } catch (error) {
       console.log(error);
     }

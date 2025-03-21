@@ -36,8 +36,6 @@ function UpdateProjectPage() {
     deadline: "",
     status: "Planning",
     collaboratingInstitutions: "",
-    ethicsApproval: false,
-    ethicsApprovalRef: "",
     description: "",
     expectedOutcomes: "",
     samples: [],
@@ -94,8 +92,6 @@ function UpdateProjectPage() {
           status: projectData.status || "Planning",
           collaboratingInstitutions:
             projectData.collaboratingInstitutions || "",
-          ethicsApproval: Boolean(projectData.ethicsApproval),
-          ethicsApprovalRef: projectData.ethicsApprovalRef || "",
           description: projectData.description || "",
           expectedOutcomes: projectData.expectedOutcomes || "",
           samples: Array.isArray(projectData.samples)
