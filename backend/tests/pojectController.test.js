@@ -302,14 +302,30 @@ describe("Project Controller Tests", () => {
   });
 
   describe("Get Sample By ID", () => {
-    it("should return a sample by ID", async () => {
+    it("should return a sample by ID with populated fields", async () => {
       const mockSample = {
         _id: "sampleId",
         name: "Test Sample",
         description: "A test sample",
+        technicianResponsible: {
+          _id: "technicianId",
+          name: "John Doe",
+          email: "johndoe@example.com",
+          institution: "Tech Institute",
+        },
+        project: {
+          _id: "projectId",
+          projectName: "Project X",
+          researchDomain: "Biology",
+        },
       };
 
-      jest.spyOn(Sample, "findById").mockResolvedValue(mockSample);
+      const mockQuery = {
+        populate: jest.fn().mockReturnThis(),
+        exec: jest.fn().mockResolvedValue(mockSample),
+      };
+
+      jest.spyOn(Sample, "findById").mockReturnValue(mockQuery);
 
       const response = await request(app).get(
         "/projects/mockProjectId/samples/sampleId"
@@ -317,10 +333,24 @@ describe("Project Controller Tests", () => {
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual(mockSample);
+      expect(Sample.findById).toHaveBeenCalledWith("sampleId");
+      expect(mockQuery.populate).toHaveBeenCalledWith(
+        "technicianResponsible",
+        "name email institution"
+      );
+      expect(mockQuery.populate).toHaveBeenCalledWith(
+        "project",
+        "projectName researchDomain"
+      );
     });
 
     it("should return 404 if sample is not found", async () => {
-      jest.spyOn(Sample, "findById").mockResolvedValue(null);
+      const mockQuery = {
+        populate: jest.fn().mockReturnThis(),
+        exec: jest.fn().mockResolvedValue(null),
+      };
+
+      jest.spyOn(Sample, "findById").mockReturnValue(mockQuery);
 
       const response = await request(app).get(
         "/projects/mockProjectId/samples/nonexistentId"
@@ -331,9 +361,12 @@ describe("Project Controller Tests", () => {
     });
 
     it("should handle errors when fetching a sample", async () => {
-      jest
-        .spyOn(Sample, "findById")
-        .mockRejectedValue(new Error("Database Error"));
+      const mockQuery = {
+        populate: jest.fn().mockReturnThis(),
+        exec: jest.fn().mockRejectedValue(new Error("Database Error")),
+      };
+
+      jest.spyOn(Sample, "findById").mockReturnValue(mockQuery);
 
       const response = await request(app).get(
         "/projects/mockProjectId/samples/sampleId"
