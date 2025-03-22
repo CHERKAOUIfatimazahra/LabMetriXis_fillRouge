@@ -11,7 +11,6 @@ const Header = ({ title, bgColor, hoverColor }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const navigate = useNavigate();
 
-  // Récupération des informations de l'utilisateur depuis localStorage
   useEffect(() => {
     const userData = localStorage.getItem("user");
 
@@ -21,7 +20,6 @@ const Header = ({ title, bgColor, hoverColor }) => {
         const fullName = user.name || "Utilisateur";
         setUserName(fullName);
 
-        // Générer les initiales
         const initials = fullName
           .split(" ")
           .map((n) => n[0])
@@ -34,16 +32,18 @@ const Header = ({ title, bgColor, hoverColor }) => {
     }
   }, []);
 
-  // Fetch unread notification count
   useEffect(() => {
     const fetchNotificationCount = async () => {
       try {
         const token = localStorage.getItem("token");
         if (!token) return;
 
-        const response = await axios.get(`${import.meta.env.VITE_API_URL}/notification/count`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const response = await axios.get(
+          `${import.meta.env.VITE_API_URL}/notification/count`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
         setNotificationCount(response.data.count);
       } catch (error) {
         console.error("Error fetching notification count:", error);
@@ -52,20 +52,17 @@ const Header = ({ title, bgColor, hoverColor }) => {
 
     fetchNotificationCount();
 
-    // Set up polling for new notifications (every 30 seconds)
     const intervalId = setInterval(fetchNotificationCount, 30000);
 
     return () => clearInterval(intervalId);
   }, []);
 
-  // Fonction de déconnexion
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     navigate("/login");
   };
 
-  // Toggle notification dropdown
   const toggleNotifications = () => {
     setShowNotifications(!showNotifications);
   };
