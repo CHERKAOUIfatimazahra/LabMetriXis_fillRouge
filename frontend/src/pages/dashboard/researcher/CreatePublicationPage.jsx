@@ -27,7 +27,7 @@ import {
   FaUser,
 } from "react-icons/fa";
 
-function CreateFinalReportPage() {
+function CreatePublicationPage() {
   const { projectId } = useParams();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("publications");
@@ -647,4 +647,4 @@ function CreateFinalReportPage() {
   );
 }
 
-export default CreateFinalReportPage;
+export default CreatePublicationPage;
