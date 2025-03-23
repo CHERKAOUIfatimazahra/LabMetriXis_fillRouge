@@ -129,14 +129,11 @@ const NotificationDropdown = ({ isOpen, onClose }) => {
               onClick={() => markAsRead(notification._id)}
             >
               <div className="flex justify-between items-start">
-                <p className="text-sm font-medium text-gray-800">
-                  {notification.title}
-                </p>
                 <span className="text-xs text-gray-500">
                   {new Date(notification.createdAt).toLocaleDateString()}
                 </span>
               </div>
-              <p className="text-sm text-gray-600 mt-1">
+              <p className="text-sm font-medium text-gray-800">
                 {notification.message}
               </p>
             </div>
