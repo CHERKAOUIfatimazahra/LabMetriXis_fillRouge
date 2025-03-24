@@ -7,8 +7,6 @@ const {
   getAnalysisReport,
 } = require("../controllers/sampleController");
 const Sample = require("../models/Sample");
-const Project = require("../models/Project");
-const User = require("../models/User");
 const {
   createNotification,
   createNotificationForUsers,
@@ -22,14 +20,11 @@ jest.mock("../controllers/NotificationsController");
 const app = express();
 app.use(express.json());
 
-// Mock req.user for authentication
 app.use((req, res, next) => {
   req.user = { _id: "123" };
   next();
 });
 
-// Mock route handlers
-// Setting up params.id to match the controller implementation
 app.get(
   "/samples",
   (req, res, next) => {
@@ -54,7 +49,6 @@ describe("Sample Controller", () => {
         { _id: "2", technician: "123", name: "Sample 2" },
       ];
 
-      // Fix the mock chain setup
       const mockPopulateFirst = jest.fn().mockReturnThis();
       const mockPopulateSecond = jest.fn().mockResolvedValue(mockSamples);
 
@@ -76,7 +70,6 @@ describe("Sample Controller", () => {
     it("should return 500 if there's an error", async () => {
       const mockError = new Error("Database error");
 
-      // Fix the mock chain setup
       const mockPopulateFirst = jest.fn().mockReturnThis();
       const mockPopulateSecond = jest.fn().mockRejectedValue(mockError);
 
@@ -108,7 +101,6 @@ describe("Sample Controller", () => {
         save: jest.fn().mockResolvedValue(true),
       };
 
-      // Mock the populate method
       Sample.findById.mockReturnValue({
         populate: jest.fn().mockResolvedValue(mockSample),
       });
@@ -189,7 +181,6 @@ describe("Sample Controller", () => {
 
   describe("POST /samples/:sampleId/analysis-report", () => {
     it("should return 400 if sample ID is invalid", async () => {
-      
       const invalidApp = express();
       invalidApp.use(express.json());
       invalidApp.use((req, res, next) => {
@@ -197,7 +188,6 @@ describe("Sample Controller", () => {
         next();
       });
 
-      // Set up a route with an empty sampleId param
       invalidApp.post(
         "/samples/:sampleId/analysis-report",
         (req, res, next) => {

@@ -14,13 +14,11 @@ app.use((req, res, next) => {
   next();
 });
 
-// Routes
 app.get("/notification", notificationController.getNotifications);
 app.get("/notification/count", notificationController.getUnreadCount);
 app.put("/notification/:id/read", notificationController.markAsRead);
 app.put("/notification/read-all", notificationController.markAllAsRead);
 
-// Mocking models
 jest.mock("../models/Notification");
 
 describe("Notification Controller", () => {

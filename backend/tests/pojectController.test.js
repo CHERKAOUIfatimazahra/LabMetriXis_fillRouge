@@ -4,8 +4,7 @@ const bodyParser = require("body-parser");
 const projectController = require("../controllers/projectController");
 const Project = require("../models/Project");
 const Sample = require("../models/Sample");
-const User = require("../models/User");
-const mongoose = require("mongoose");
+
 const {
   createNotification,
   createNotificationForUsers,
