@@ -58,7 +58,6 @@ function TechnicianDashboard() {
   const [expiringNonAnalyzedSamples, setExpiringNonAnalyzedSamples] = useState(
     []
   );
-  const [expiredSamples, setExpiredSamples] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [userName, setUserName] = useState("");
@@ -138,10 +137,14 @@ function TechnicianDashboard() {
     const loadData = async () => {
       setLoading(true);
       try {
-        const API_URL = `${import.meta.env.VITE_API_URL}/samples`;
-        const { data: samplesData } = await axios.get(`${API_URL}/samples`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        });
+        const { data: samplesData } = await axios.get(
+          `${import.meta.env.VITE_API_URL}/samples/samples`,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }
+        );
 
         setSamples(samplesData);
 
@@ -170,14 +173,6 @@ function TechnicianDashboard() {
 
         setExpiringNonAnalyzedSamples(expiringNonAnalyzed);
 
-        const expired = samplesData.filter((sample) => {
-          if (!sample.expirationDate) return false;
-          const expirationDate = new Date(sample.expirationDate);
-          return expirationDate < today && sample.status !== "Analyzed";
-        });
-
-        setExpiredSamples(expired);
-
         setStats({
           totalSamples: samplesData.length,
           pendingSamples: samplesData.filter((s) => s.status === "Pending")
@@ -187,11 +182,11 @@ function TechnicianDashboard() {
           ).length,
           analyzedSamples: samplesData.filter((s) => s.status === "Analyzed")
             .length,
-          criticalExpirations: expired.length,
+          criticalExpirations: expiringNonAnalyzed.length,
         });
       } catch (err) {
-        setError("Error loading data.");
-        console.error("Error fetching data:", err);
+        setError("Erreur lors du chargement des données.");
+        console.error("Erreur lors de la récupération des données :", err);
       } finally {
         setLoading(false);
       }
@@ -307,13 +302,13 @@ function TechnicianDashboard() {
               />
             </div>
 
-            {/* Expired Samples Section */}
-            {expiredSamples.length > 0 && (
+            {/* Expiring Samples Section */}
+            {expiringNonAnalyzedSamples.length > 0 && (
               <div className="mb-6">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-bold text-red-800 flex items-center">
-                    <FaExclamationTriangle className="mr-2" /> Expired Samples
-                    Requiring Attention
+                    <FaExclamationTriangle className="mr-2" /> Samples Expiring
+                    Soon
                   </h2>
                 </div>
                 <div className="bg-red-100 rounded-lg shadow overflow-x-auto border border-red-300">
@@ -333,7 +328,7 @@ function TechnicianDashboard() {
                           Expiration Date
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-red-800 uppercase tracking-wider">
-                          Days Expired
+                          Days Until
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-red-800 uppercase tracking-wider">
                           Status
@@ -344,7 +339,7 @@ function TechnicianDashboard() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-red-200">
-                      {expiredSamples.slice(0, 5).map((sample) => {
+                      {expiringNonAnalyzedSamples.slice(0, 5).map((sample) => {
                         const daysUntil = getDaysUntilExpiration(
                           sample.expirationDate
                         );
@@ -363,7 +358,7 @@ function TechnicianDashboard() {
                               {formatDate(sample.expirationDate)}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-red-800 font-bold">
-                              {Math.abs(daysUntil)} days ago
+                              {daysUntil} days
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <span

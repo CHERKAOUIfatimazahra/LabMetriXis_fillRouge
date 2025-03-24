@@ -16,7 +16,6 @@ process.env.JWT_SECRET = "your_jwt_secret_key";
 const app = express();
 app.use(bodyParser.json());
 
-// Register all routes that we're testing
 app.post("/auth/register", authController.register);
 app.get("/auth/verify-email", authController.verifyEmail);
 app.post("/auth/login", authController.login);
@@ -25,7 +24,6 @@ app.post("/auth/resend-otp", authController.resendOTP);
 app.post("/auth/forget-password", authController.forgetPassword);
 app.post("/auth/reset-password", authController.resetPassword);
 
-// Test pour l'inscription
 describe("Auth Controller - Register", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -75,7 +73,6 @@ describe("Auth Controller - Register", () => {
   });
 });
 
-// Test pour la vérification de l'email
 describe("Auth Controller - Verify Email", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -129,7 +126,6 @@ describe("Auth Controller - Verify Email", () => {
   });
 });
 
-// Test pour le login
 describe("Auth Controller - Login", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -161,7 +157,6 @@ describe("Auth Controller - Login", () => {
     expect(response.status).toBe(200);
     expect(response.body.message).toBe("OTP sent to email");
 
-    // Ensure otp was set correctly
     expect(mockUser.otp).toBe("123456");
     expect(mockUser.save).toHaveBeenCalled();
   });
@@ -246,7 +241,6 @@ describe("Auth Controller - Login", () => {
   });
 });
 
-// Test pour la vérification de l'OTP
 describe("Auth Controller - Verify OTP", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -275,7 +269,7 @@ describe("Auth Controller - Verify OTP", () => {
     const mockUser = {
       _id: "123",
       otp: "123456",
-      otpExpires: Date.now() - 5 * 60 * 1000, // OTP expired
+      otpExpires: Date.now() - 5 * 60 * 1000,
       save: jest.fn().mockResolvedValue(),
     };
 
@@ -292,7 +286,6 @@ describe("Auth Controller - Verify OTP", () => {
   });
 });
 
-// Test pour renvoyer un nouveau code OTP
 describe("Auth Controller - Resend OTP", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -313,7 +306,7 @@ describe("Auth Controller - Resend OTP", () => {
     const mockUser = {
       email: "test@example.com",
       otp: "123456",
-      otpExpires: Date.now() + 60 * 1000, // OTP encore valide
+      otpExpires: Date.now() + 60 * 1000,
     };
 
     jest.spyOn(User, "findOne").mockResolvedValue(mockUser);
@@ -355,7 +348,6 @@ describe("Auth Controller - Resend OTP", () => {
   });
 });
 
-// Test pour Forget Password
 describe("Auth Controller - Forget Password", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -400,7 +392,6 @@ describe("Auth Controller - Forget Password", () => {
   });
 });
 
-// Test pour Reset Password
 describe("Auth Controller - Reset Password", () => {
   beforeEach(() => {
     jest.clearAllMocks();

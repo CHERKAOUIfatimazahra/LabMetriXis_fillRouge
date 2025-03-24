@@ -30,7 +30,7 @@ describe("contactUs Controller", () => {
   });
 
   test("should return 500 if admin email is not configured", async () => {
-    delete process.env.EMAIL; // Supprime l'email admin temporairement
+    delete process.env.EMAIL;
 
     req.body = {
       name: "John Doe",
@@ -55,7 +55,7 @@ describe("contactUs Controller", () => {
       message: "Hello",
     };
 
-    sendEmail.mockResolvedValueOnce(); // Simule un envoi réussi
+    sendEmail.mockResolvedValueOnce();
 
     await contactUs(req, res);
 

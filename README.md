@@ -132,3 +132,12 @@ Ce projet utilise GitHub Actions pour l'intégration et le déploiement continus
 - La vérification du code
 - L'exécution des tests backend
 - La construction et le déploiement des images Docker
+
+## lien de documentation API
+- https://documenter.getpostman.com/view/33203681/2sAYkHqJn4
+
+## lien de jira
+- https://cherkaouifatimazahra97.atlassian.net/jira/software/c/projects/PLSDGLS/boards/70
+
+## lien de presentation 
+- https://www.canva.com/design/DAGiWjoLJNY/cuDfI2bGcY3KQ9aa8_PcIA/edit
