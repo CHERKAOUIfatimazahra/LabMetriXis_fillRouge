@@ -1,8 +1,5 @@
 const Project = require("../models/Project");
 const Sample = require("../models/Sample");
-const User = require("../models/User");
-const fs = require("fs");
-const path = require("path");
 const {
   createNotification,
   createNotificationForUsers,

@@ -4,7 +4,6 @@ const dotenv = require("dotenv");
 const path = require("path");
 const authRoutes = require("./routes/auth/authRoutes");
 const projectRoutes = require("./routes/project/projectRoutes");
-const statisticsRoutes = require("./routes/project/statisticsRoutes");
 const contactusRoutes = require("./routes/contactRoute");
 const samplesRoutes = require("./routes/samples/samplesRoutes");
 const notificationRoute = require("./routes/notificationRoutes")
@@ -31,7 +30,6 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 // Routes
 app.use("/auth", authRoutes);
 app.use("/project", projectRoutes);
-app.use("/statistic", statisticsRoutes);
 app.use("/contactus", contactusRoutes);
 app.use("/samples", samplesRoutes);
 app.use("/notification", notificationRoute)
