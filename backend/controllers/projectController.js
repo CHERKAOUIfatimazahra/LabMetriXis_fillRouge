@@ -1,7 +1,5 @@
 const Project = require("../models/Project");
 const Sample = require("../models/Sample");
-const User = require("../models/User");
-const fs = require("fs");
 const path = require("path");
 const {
   createNotification,
@@ -209,7 +207,7 @@ exports.getAllProjects = async (req, res) => {
       $or: [
         { createdBy: req.user.id },
         { teamLead: req.user.id },
-        { "teamMembers.user": req.user.id },
+        { teamMembers: req.user.id },
       ],
     })
       .populate("samples")
